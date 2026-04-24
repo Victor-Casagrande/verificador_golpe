@@ -1,7 +1,7 @@
 const winston = require('winston');
 
 // Logger utilizando winston para regstrar erros
-//
+// Podemos alterar para um logger nativo
 const logger = winston.createLogger({
   level: 'info',
   format: winston.format.combine(
