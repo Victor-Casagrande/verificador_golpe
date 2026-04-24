@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Sentinela APL - Segurança e Acessibilidade",
+  "version": "1.0.0",
+  "description": "Ferramenta desenvolvida para detectar golpes digitais e verificar acessibilidade. Projeto de Extensão - IFC.",
+  "permissions": [
+    "activeTab"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}
