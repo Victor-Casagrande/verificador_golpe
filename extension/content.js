@@ -1,20 +1,3 @@
-// Verifica a acessibilidade básica da página atual
-function checkAccessibility() {
-    const images = document.querySelectorAll('img');
-    let missingAltCount = 0;
-    
-    for (let i = 0; i < images.length; i++) {
-        if (!images[i].hasAttribute('alt') || images[i].getAttribute('alt').trim() === '') {
-            missingAltCount++;
-        }
-    }
-
-    if (missingAltCount > 0) {
-        console.warn(`Sentinela Acessibilidade: ${missingAltCount} imagem(ns) sem a tag 'alt' detectada(s).`);
-        // Aqui o grupo de front-end pode implementar um selo visual discreto na tela
-    }
-}
-
 // Cria o overlay na tela caso a API detecte perigo
 function createAlertOverlay(status, reason) {
     const overlay = document.createElement('div');
@@ -60,34 +43,48 @@ function createAlertOverlay(status, reason) {
     });
 }
 
-// Comunica com o backend FastAPI para checar a URL
-async function verifySite() {
-    const currentUrl = window.location.href;
-    
+// Executa a auditoria de acessibilidade usando a biblioteca Axe-core injetada
+async function runAccessibilityAudit() {
     try {
-        const response = await fetch('http://127.0.0.1:8000/verify', {
+        const results = await axe.run();
+        return results.violations;
+    } catch (error) {
+        console.error("Sentinela: Erro ao executar a auditoria de acessibilidade do Axe-core:", error);
+        return [];
+    }
+}
+
+// Unifica o fluxo: avalia acessibilidade localmente e envia o payload consolidado para a API
+async function verifySiteAndAccessibility() {
+    const currentUrl = window.location.href;
+    const accessibilityReport = await runAccessibilityAudit();
+
+    try {
+        const response = await fetch('http://localhost:3000/urls/analyze', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ url: currentUrl })
+            body: JSON.stringify({ 
+                url: currentUrl,
+                accessibility_report: accessibilityReport
+            })
         });
-        
+
         if (!response.ok) {
-            console.error("Erro na comunicação com o servidor Sentinela.");
+            console.error("Erro na comunicação com o servidor SentryVZN. Código HTTP:", response.status);
             return;
         }
 
         const data = await response.json();
-        
-        if (data.is_danger) {
-            createAlertOverlay(data.status, data.reason);
+
+        if (data.security && data.security.is_danger) {
+            createAlertOverlay(data.security.status, data.security.reason);
         }
     } catch (error) {
-        console.error("Falha ao tentar verificar a URL:", error);
+        console.error("Falha ao tentar verificar a URL e a acessibilidade na rede:", error);
     }
 }
 
-// Execução das funções assim que o script é carregado
-checkAccessibility();
-verifySite();
+// Dispara a execução principal assim que a página entra em idle
+verifySiteAndAccessibility();

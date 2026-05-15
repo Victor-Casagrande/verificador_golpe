@@ -15,6 +15,7 @@
         "<all_urls>"
       ],
       "js": [
+        "axe.min.js",
         "content.js"
       ],
       "run_at": "document_idle"

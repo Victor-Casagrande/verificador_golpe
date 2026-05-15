@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -15,7 +16,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use(rateLimitMiddleware);
 
 // Rotas
-app.use('/api/verify', verificationRoutes);
+// Correção: Implementação da rota padronizada conforme os Requisitos do Projeto
+app.use('/urls/analyze', verificationRoutes);
 
 // Rota básica de Health Check para testar a comunicação
 app.get('/api/status', (req, res) => {
