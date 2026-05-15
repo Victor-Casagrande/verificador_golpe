@@ -11,11 +11,8 @@ const app = express();
 // Middlewares globais
 app.use(helmet());
 app.use(cors());
-
-// Correção de Segurança: Redução do limite do payload de 5MB para 1MB 
-// para prevenir ataques de DoS por exaustão de memória na camada HTTP.
-app.use(express.json({ limit: '1mb' }));
-app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+app.use(express.json({ limit: '5mb'}));
+app.use(express.urlencoded({ extended: true, limit: '1mb' })); 
 app.use(rateLimitMiddleware);
 
 // Rotas

@@ -25,33 +25,84 @@ flowchart LR
 
 ```
 verificador_golpe/
+├── docker-compose.yml      # API + PostgreSQL para a equipe
+├── .env.example            # Modelo de variáveis (copiar para .env)
+├── db/init/                # Scripts SQL executados na 1ª subida do Postgres
 ├── api/                    # Backend Node.js (Express)
+│   ├── Dockerfile
 │   └── src/
-│       ├── app.js          # Aplicação Express com rotas e middlewares
-│       ├── server.js       # Ponto de entrada (npm run dev)
-│       ├── config/         # Conexão PostgreSQL
-│       ├── controllers/
-│       ├── services/       # Google Safe Browsing + heurísticas + persistência
-│       ├── routes/
-│       ├── middlewares/
-│       └── utils/
+│       ├── app.js          # Rotas e middlewares
+│       ├── server.js       # Ponto de entrada
+│       └── ...
 └── extension/              # Extensão Chrome (Manifest V3)
     ├── manifest.json
-    ├── content.js          # Lógica principal na página
-    ├── axe.min.js          # Biblioteca de auditoria de acessibilidade
-    └── api_server.py       # Legado — não utilizado pelo fluxo atual
+    ├── content.js
+    └── axe.min.js
 ```
 
 ## Pré-requisitos
 
-| Ferramenta | Versão sugerida |
-|------------|-----------------|
-| [Node.js](https://nodejs.org/) | 18+ |
-| [PostgreSQL](https://www.postgresql.org/) | 14+ |
-| [Google Chrome](https://www.google.com/chrome/) | Atual |
-| Conta Google Cloud | Para a Safe Browsing API |
+| Ferramenta | Versão sugerida | Obrigatório para |
+|------------|-----------------|------------------|
+| [Docker](https://www.docker.com/) + Docker Compose | Atual | Setup recomendado (API + banco) |
+| [Node.js](https://nodejs.org/) | 18+ | Desenvolvimento local sem Docker |
+| [PostgreSQL](https://www.postgresql.org/) | 14+ | Desenvolvimento local sem Docker |
+| [Google Chrome](https://www.google.com/chrome/) | Atual | Extensão |
+| Conta Google Cloud | — | Safe Browsing API |
 
-## Configuração
+## Início rápido com Docker (recomendado)
+
+Forma mais simples para contribuidores subirem **API + PostgreSQL** com a mesma configuração.
+
+### 1. Variáveis de ambiente
+
+Na **raiz do repositório**:
+
+```bash
+cp .env.example .env
+```
+
+Edite `.env` e preencha `GOOGLE_API_KEY` com sua chave do Google Safe Browsing.
+
+### 2. Subir os serviços
+
+```bash
+docker compose up --build
+```
+
+Em segundo plano:
+
+```bash
+docker compose up --build -d
+```
+
+### 3. Validar
+
+```bash
+curl http://localhost:3000/api/status
+```
+
+### Comandos úteis
+
+| Comando | Descrição |
+|---------|-----------|
+| `docker compose logs -f api` | Logs da API |
+| `docker compose logs -f db` | Logs do PostgreSQL |
+| `docker compose down` | Para os containers |
+| `docker compose down -v` | Para os containers e **apaga o volume do banco** |
+
+### Serviços
+
+| Serviço | Container | Porta | Descrição |
+|---------|-----------|-------|-----------|
+| `api` | `sentinela-api` | 3000 | Backend Node.js |
+| `db` | `sentinela-db` | 5432 | PostgreSQL 16 |
+
+O schema `url_analyses` é criado automaticamente via `db/init/01-schema.sql` na primeira inicialização do banco.
+
+> A extensão Chrome continua rodando no navegador do host e aponta para `http://localhost:3000`. Com Docker, a porta 3000 é publicada no host — não é necessário alterar a extensão.
+
+## Configuração manual (sem Docker)
 
 ### 1. Chave da Google Safe Browsing API
 
@@ -78,22 +129,7 @@ CREATE TABLE url_analyses (
 
 ### 3. Variáveis de ambiente
 
-Na pasta `api/`, crie o arquivo `.env` (não versionado):
-
-```env
-# Servidor
-PORT=3000
-
-# Google Safe Browsing
-GOOGLE_API_KEY=sua_chave_aqui
-
-# PostgreSQL
-DB_USER=postgres
-DB_HOST=localhost
-DB_NAME=meubanco
-DB_PASSWORD=sua_senha
-DB_PORT=5432
-```
+Copie `.env.example` para `.env` na raiz (Docker) ou crie `api/.env` para desenvolvimento local. Use `DB_HOST=localhost` quando o PostgreSQL rodar na máquina host.
 
 > **Importante:** nunca commite o arquivo `.env` com credenciais reais.
 
@@ -102,17 +138,6 @@ DB_PORT=5432
 ```bash
 cd api
 npm install
-```
-
-Instale também as dependências referenciadas no código mas ainda não listadas no `package.json`:
-
-```bash
-npm install helmet express-rate-limit winston
-```
-
-Inicie o servidor em modo desenvolvimento:
-
-```bash
 npm run dev
 ```
 
@@ -121,24 +146,6 @@ Verifique se a API responde:
 ```bash
 curl http://localhost:3000/api/status
 ```
-
-Resposta esperada:
-
-```json
-{
-  "sucesso": true,
-  "mensagem": "API do SentryVZN operando normalmente.",
-  "timestamp": "..."
-}
-```
-
-> **Nota de desenvolvimento:** o arquivo `api/src/app.js` contém todas as rotas e middlewares. O `server.js` atual sobe um Express mínimo **sem montar** essas rotas. Para o fluxo completo funcionar, o `server.js` deve importar e escutar o `app` exportado por `app.js`, por exemplo:
->
-> ```js
-> const app = require('./app');
-> const PORT = process.env.PORT || 3000;
-> app.listen(PORT, () => { /* ... */ });
-> ```
 
 ### 5. Extensão Chrome
 
@@ -220,7 +227,9 @@ A extensão envia requisições para `http://localhost:3000/urls/analyze`. A API
 
 | Comando | Pasta | Descrição |
 |---------|-------|-----------|
+| `npm start` | `api/` | Inicia o servidor (produção / Docker) |
 | `npm run dev` | `api/` | Inicia o servidor com nodemon |
+| `docker compose up --build` | raiz | Sobe API + PostgreSQL |
 | `npm test` | `api/` | Ainda não implementado |
 
 ## Limitações conhecidas
@@ -229,7 +238,6 @@ A extensão envia requisições para `http://localhost:3000/urls/analyze`. A API
 - **Histórico na UI:** a API persiste análises no PostgreSQL, mas a extensão ainda não exibe histórico ao usuário.
 - **Falha do banco:** se o PostgreSQL estiver indisponível, o alerta de segurança ainda é retornado; apenas a persistência falha silenciosamente.
 - **`extension/api_server.py`:** backend FastAPI legado, mantido no repositório mas **não utilizado** pelo `content.js` atual.
-- **Dependências:** `helmet`, `express-rate-limit` e `winston` são usados no código e precisam ser instaladas manualmente até serem adicionadas ao `package.json`.
 
 ## Contribuindo
 
