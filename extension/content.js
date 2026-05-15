@@ -1,4 +1,12 @@
-// Cria o overlay na tela caso a API detecte perigo (Protegido contra XSS via textContent)
+// Configurações Globais do SentryVZN (Facilita a migração de Localhost para Nuvem)
+const SENTRY_CONFIG = {
+    // Alterar esta URL quando fizer o deploy da API (ex: https://api.sentryvzn.com.br)
+    API_URL: 'http://localhost:3000',
+    // Tempo máximo de espera para a resposta da API (em milissegundos)
+    TIMEOUT_MS: 10000 
+};
+
+// Cria o overlay no ecrã caso a API detecte perigo (Protegido contra XSS via textContent)
 function createAlertOverlay(status, reason) {
     const overlay = document.createElement('div');
     overlay.style.position = 'fixed';
@@ -6,8 +14,7 @@ function createAlertOverlay(status, reason) {
     overlay.style.left = '0';
     overlay.style.width = '100vw';
     overlay.style.height = '100vh';
-    overlay.style.backgroundColor = 'rgba(220, 38, 38, 0.95)'; // Vermelho forte
-    overlay.style.zIndex = '9999999';
+    overlay.style.backgroundColor = 'rgba(220, 38, 38, 0.95)';
     overlay.style.display = 'flex';
     overlay.style.flexDirection = 'column';
     overlay.style.justifyContent = 'center';
@@ -50,9 +57,9 @@ function createAlertOverlay(status, reason) {
 
 // Executa a auditoria de acessibilidade garantindo que a biblioteca está presente
 async function runAccessibilityAudit() {
-    // Correção: Trava de segurança para evitar quebra silenciosa se o manifest.json falhar na injeção
+    // Trava de segurança para evitar quebra silenciosa se o manifest.json falhar na injeção
     if (typeof axe === 'undefined') {
-        console.warn("SentryVZN: Biblioteca Axe-core não encontrada no contexto da página. Pulando auditoria.");
+        console.warn("SentryVZN: Biblioteca Axe-core não encontrada no contexto da página. A saltar auditoria.");
         return [];
     }
 
@@ -70,8 +77,15 @@ async function verifySiteAndAccessibility() {
     const currentUrl = window.location.href;
     const accessibilityReport = await runAccessibilityAudit();
 
+    // Correção: Uso de AbortController para implementar Timeout no pedido HTTP
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), SENTRY_CONFIG.TIMEOUT_MS);
+
     try {
-        const response = await fetch('http://localhost:3000/urls/analyze', {
+        // Correção: Rota baseada em configuração dinâmica
+        const endpoint = `${SENTRY_CONFIG.API_URL}/urls/analyze`;
+
+        const response = await fetch(endpoint, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -79,8 +93,11 @@ async function verifySiteAndAccessibility() {
             body: JSON.stringify({ 
                 url: currentUrl,
                 accessibility_report: accessibilityReport
-            })
+            }),
+            signal: controller.signal // Associa o cancelamento ao pedido
         });
+
+        clearTimeout(timeoutId); // Limpa o timeout se a resposta chegar antes do limite
 
         if (!response.ok) {
             console.error("Erro na comunicação com o servidor SentryVZN. Código HTTP:", response.status);
@@ -93,12 +110,18 @@ async function verifySiteAndAccessibility() {
             createAlertOverlay(data.security.status, data.security.reason);
         }
     } catch (error) {
-        console.error("Falha ao tentar verificar a URL e a acessibilidade na rede:", error);
+        clearTimeout(timeoutId); // Garante a limpeza em caso de erro de rede
+        
+        // Intercepta especificamente o erro de interrupção por tempo
+        if (error.name === 'AbortError') {
+            console.error(`SentryVZN: O servidor demorou mais de ${SENTRY_CONFIG.TIMEOUT_MS / 1000} segundos a responder. Pedido cancelado para não bloquear o navegador.`);
+        } else {
+            console.error("SentryVZN: Falha ao tentar verificar a URL e a acessibilidade na rede:", error);
+        }
     }
 }
 
-// Correção: Resolve a Condição de Corrida aguardando o carregamento completo da página
-// Isso garante que o DOM está pronto para o Axe-core e que scripts externos foram processados.
+// Resolve a Condição de Corrida aguardando o carregamento completo da página
 window.addEventListener('load', () => {
     verifySiteAndAccessibility();
 });
