@@ -40,18 +40,31 @@ const checkStaticHeuristics = (urlString) => {
   }
 };
 
+// Correção de Segurança 1: Função para sanitizar e podar o payload do Axe-core 
+const sanitizeAccessibilityReport = (report) => {
+  if (!Array.isArray(report)) return [];
+  
+  const MAX_VIOLATIONS = 50;
+  const limitedReport = report.slice(0, MAX_VIOLATIONS);
+
+  return limitedReport.map(violation => {
+    return {
+      id: violation.id,
+      impact: violation.impact,
+      description: violation.description,
+      helpUrl: violation.helpUrl,
+      nodes_count: Array.isArray(violation.nodes) ? violation.nodes.length : 0
+    };
+  });
+};
+
 // Motor Principal: Integração com o Google, processamento estruturado e persistência no PostgreSQL
 const verifyUrl = async (urlString, accessibilityReport) => {
   const apiKey = process.env.GOOGLE_API_KEY;
   let securityResult = null;
-  
-  if (!apiKey) {
-    throw new Error("Falha no Servidor: Chave da API do Google não configurada no arquivo .env.");
-  }
 
   const googleApiUrl = `https://safebrowsing.googleapis.com/v4/threatMatches:find?key=${apiKey}`;
 
-  // Estrutura exigida pela documentação v4 do Google
   const payload = {
     client: {
       clientId: "ifc-videira-sentinela",
@@ -67,38 +80,46 @@ const verifyUrl = async (urlString, accessibilityReport) => {
     }
   };
 
-  // Execução do POST assíncrono nativo para a nuvem do Google
-  const response = await fetch(googleApiUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(payload)
-  });
+  // Correção de Segurança 2: Padrão de Fallback para o Motor Principal
+  try {
+    if (!apiKey) {
+      throw new Error("Chave da API do Google ausente no .env.");
+    }
 
-  if (!response.ok) {
-    throw new Error(`Google API rejeitou a requisição. Código HTTP: ${response.status}`);
-  }
+    const response = await fetch(googleApiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
 
-  const data = await response.json();
+    if (!response.ok) {
+      throw new Error(`Google API rejeitou a requisição HTTP: ${response.status}`);
+    }
 
-  // Se o array 'matches' existir, a URL está na lista negra global
-  if (data.matches && data.matches.length > 0) {
-    securityResult = {
-      is_danger: true,
-      status: "GOLPE CONFIRMADO",
-      reason: "URL identificada como maliciosa no banco de dados oficial do Google Safe Browsing."
-    };
-  } else {
-    // Se a URL passar pelo Google, acionamos nosso motor interno como segunda barreira
+    const data = await response.json();
+
+    if (data.matches && data.matches.length > 0) {
+      securityResult = {
+        is_danger: true,
+        status: "GOLPE CONFIRMADO",
+        reason: "URL identificada como maliciosa no banco de dados oficial do Google Safe Browsing."
+      };
+    } else {
+      securityResult = checkStaticHeuristics(urlString);
+    }
+
+  } catch (externalApiError) {
+    // Em caso de falha externa (sem internet, sem cota, sem chave), logamos o erro para a equipe
+    // e acionamos IMEDIATAMENTE o motor de heurísticas para não deixar o usuário vulnerável.
+    console.warn(`[SENTRY-WARNING] Falha na comunicação externa. Acionando Fallback Local. Motivo: ${externalApiError.message}`);
     securityResult = checkStaticHeuristics(urlString);
   }
 
-  // Prepara o JSONB de acessibilidade (se não houver relatório vindo da extensão, enviamos um array vazio)
-  const violationsJsonb = accessibilityReport ? JSON.stringify(accessibilityReport) : JSON.stringify([]);
+  const sanitizedReport = sanitizeAccessibilityReport(accessibilityReport);
+  const violationsJsonb = JSON.stringify(sanitizedReport);
 
-  // Utilização de Consultas Parametrizadas para blindagem contra SQL Injection.
-  // O RETURNING id extrai a chave primária serial recém criada na tabela url_analyses.
   const insertQuery = `
     INSERT INTO url_analyses (url, is_danger, status, reason, accessibility_violations)
     VALUES ($1, $2, $3, $4, $5)
@@ -116,22 +137,19 @@ const verifyUrl = async (urlString, accessibilityReport) => {
   let savedRecordId = null;
 
   try {
-    // Executa a transação no banco de dados importado de config/database.js
     const dbResult = await db.query(insertQuery, queryValues);
-    savedRecordId = dbResult.rows[0].id; // Captura o ID retornado
+    savedRecordId = dbResult.rows[0].id;
   } catch (dbError) {
     console.error("Falha silenciosa ao persistir a análise no PostgreSQL:", dbError);
-    // Decisão Arquitetural: Não lançamos um throw aqui. Se o DB falhar temporariamente, 
-    // a API ainda deve retornar o alerta de perigo (securityResult) para proteger o usuário na tela.
   }
 
-  // Retornamos o objeto com a nova chave primária para ser utilizada pelo Módulo de Histórico
   return {
     analysis_id: savedRecordId,
     security: securityResult,
     accessibility: {
       report_received: !!accessibilityReport,
-      violations_count: accessibilityReport ? accessibilityReport.length : 0
+      violations_count: accessibilityReport ? accessibilityReport.length : 0,
+      sanitized_violations_stored: sanitizedReport.length
     }
   };
 };
