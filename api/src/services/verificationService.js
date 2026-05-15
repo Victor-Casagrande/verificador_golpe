@@ -60,6 +60,43 @@ const sanitizeAccessibilityReport = (report) => {
 
 // Motor Principal: Integração com o Google, processamento estruturado e persistência no PostgreSQL
 const verifyUrl = async (urlString, accessibilityReport) => {
+  
+  // Sistema de Cache (TTL: 24 horas)
+  try {
+    const cacheQuery = `
+      SELECT id, is_danger, status, reason, accessibility_violations 
+      FROM url_analyses 
+      WHERE url = $1 AND created_at >= NOW() - INTERVAL '24 hours'
+      ORDER BY created_at DESC 
+      LIMIT 1;
+    `;
+    const cacheResult = await db.query(cacheQuery, [urlString]);
+
+    if (cacheResult.rows.length > 0) {
+      const cachedRecord = cacheResult.rows[0];
+      console.log(`[SENTRY-CACHE] URL interceptada no banco local: ${urlString}`);
+      
+      // Retornamos os dados em cache abortando a necessidade de chamar o Google
+      return {
+        analysis_id: cachedRecord.id,
+        security: {
+          is_danger: cachedRecord.is_danger,
+          status: cachedRecord.status,
+          reason: cachedRecord.reason
+        },
+        accessibility: {
+          report_received: !!accessibilityReport,
+          violations_count: Array.isArray(cachedRecord.accessibility_violations) ? cachedRecord.accessibility_violations.length : 0,
+          sanitized_violations_stored: Array.isArray(cachedRecord.accessibility_violations) ? cachedRecord.accessibility_violations.length : 0
+        },
+        cached: true // Identificador para auditoria
+      };
+    }
+  } catch (cacheError) {
+    // Se o cache falhar (ex: banco instável), é logado o erro e continuado normalmente para a API externa
+    console.warn("[SENTRY-WARNING] Falha ao consultar o cache. Acionando verificação externa:", cacheError.message);
+  }
+
   const apiKey = process.env.GOOGLE_API_KEY;
   let securityResult = null;
 
@@ -111,8 +148,6 @@ const verifyUrl = async (urlString, accessibilityReport) => {
     }
 
   } catch (externalApiError) {
-    // Em caso de falha externa (sem internet, sem cota, sem chave), logamos o erro para a equipe
-    // e acionamos IMEDIATAMENTE o motor de heurísticas para não deixar o usuário vulnerável.
     console.warn(`[SENTRY-WARNING] Falha na comunicação externa. Acionando Fallback Local. Motivo: ${externalApiError.message}`);
     securityResult = checkStaticHeuristics(urlString);
   }
@@ -150,7 +185,8 @@ const verifyUrl = async (urlString, accessibilityReport) => {
       report_received: !!accessibilityReport,
       violations_count: accessibilityReport ? accessibilityReport.length : 0,
       sanitized_violations_stored: sanitizedReport.length
-    }
+    },
+    cached: false
   };
 };
 
