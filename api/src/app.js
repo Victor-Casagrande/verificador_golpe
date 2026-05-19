@@ -52,6 +52,55 @@ app.get('/api/status', (req, res) => {
   });
 });
 
+// Rota raiz com HATEOAS
+app.get('/', (req, res) => {
+  const baseUrl = `${req.protocol}://${req.get('host')}`;
+
+  res.status(200).json({
+    sucesso: true,
+    mensagem: 'Bem-vindo à API SentryVZN',
+    versao: '1.0.0',
+    links: {
+      self: {
+        href: `${baseUrl}/`,
+        method: 'GET'
+      },
+      status: {
+        href: `${baseUrl}/api/status`,
+        method: 'GET'
+      },
+      documentacao: {
+        href: `${baseUrl}/api/docs`,
+        method: 'GET'
+      },
+      swaggerJson: {
+        href: `${baseUrl}/api/docs.json`,
+        method: 'GET'
+      },
+      autenticacao: {
+        href: `${baseUrl}/auth`,
+        method: 'POST'
+      },
+      historicoUsuarios: {
+        href: `${baseUrl}/users/history`,
+        method: 'GET'
+      },
+      relatorios: {
+        href: `${baseUrl}/reports`,
+        method: 'GET'
+      },
+      rankings: {
+        href: `${baseUrl}/rankings`,
+        method: 'GET'
+      },
+      analisarUrls: {
+        href: `${baseUrl}/urls/analyze`,
+        method: 'POST'
+      }
+    }
+  });
+});
+
 // Error handler
 app.use(errorHandlerMiddleware);
 
