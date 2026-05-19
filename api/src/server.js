@@ -8,5 +8,13 @@ const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
   console.log(`Servidor SentryVZN rodando na porta: ${PORT}`);
-  console.log(`Acesse http://localhost:${PORT}/api/status para verificar a saúde da API.`);
+  console.log('---- Informações de execução ----');
+  console.log(`URL base: http://localhost:${PORT}`);
+  console.log(`Health:   http://localhost:${PORT}/api/status`);
+  console.log(`Docs:     http://localhost:${PORT}/api/docs`);
+  console.log('');
+  console.log('Scripts de teste locais (no diretório api):');
+  console.log('  npm test          # 17 testes (unit + integration)');
+  console.log('  npm run test:urls # rodar testes contra a API em execução');
+  console.log('----------------------------------');
 });
