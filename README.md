@@ -76,6 +76,16 @@ Em segundo plano:
 docker compose up --build -d
 ```
 
+Relembrar de fazer migrações conforme as alterações, desconstrua o container e remonte-o novamente para evitar dessincronização
+
+```bash
+docker compose down -v
+```
+
+```bash
+docker compose up --build
+```
+
 ### 3. Validar
 
 ```bash
