@@ -3,10 +3,12 @@
  * /urls/analyze:
  *   post:
  *     tags: [Verificação]
- *     summary: Analisa URL (Google Safe Browsing + heurísticas locais)
+ *     summary: Analisa URL (Google Safe Browsing + axe-core no servidor)
  *     description: |
- *       Envie o header Authorization opcional para vincular ao histórico do usuário.
- *       Sem API key do Google, o motor local (heurísticas) é usado como fallback.
+ *       Fluxo: (1) verificação de segurança Google/heurísticas; (2) auditoria axe-core via Puppeteer;
+ *       (3) gera accessibility_score (penalidade) e quality_rating (0–100, maior = melhor).
+ *       Cada chamada grava nova análise — o mesmo site em datas diferentes pode ter notas diferentes.
+ *       Header Authorization opcional vincula ao histórico do usuário.
  *     security:
  *       - bearerAuth: []
  *       - {}
@@ -59,17 +61,48 @@
  *       401:
  *         description: Não autenticado
  *
+ * /urls/scores/history:
+ *   get:
+ *     tags: [Histórico]
+ *     summary: Evolução das notas de uma URL ao longo do tempo
+ *     parameters:
+ *       - in: query
+ *         name: url
+ *         required: true
+ *         schema: { type: string, format: uri }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 30 }
+ *     responses:
+ *       200:
+ *         description: Timeline de quality_rating por data
+ *
  * /rankings/accessibility/worst:
  *   get:
  *     tags: [Rankings]
- *     summary: Sites com piores pontuações de acessibilidade
+ *     summary: Sites com piores notas (menor quality_rating médio)
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 10, maximum: 50 }
+ *       - in: query
+ *         name: min_analyses
+ *         schema: { type: integer, default: 1 }
+ *     responses:
+ *       200:
+ *         description: Ranking dos piores por host
+ *
+ * /rankings/accessibility/best:
+ *   get:
+ *     tags: [Rankings]
+ *     summary: Sites com melhores notas (maior quality_rating médio)
  *     parameters:
  *       - in: query
  *         name: limit
  *         schema: { type: integer, default: 10, maximum: 50 }
  *     responses:
  *       200:
- *         description: Ranking ordenado (maior score = pior)
+ *         description: Ranking dos melhores por host
  *
  * /rankings/reports/most:
  *   get:

@@ -39,6 +39,9 @@ services:
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:3000/auth/oauth/google/callback}
       OAUTH_SUCCESS_REDIRECT: ${OAUTH_SUCCESS_REDIRECT:-}
+      AXE_ENABLED: ${AXE_ENABLED:-true}
+      AXE_TIMEOUT_MS: ${AXE_TIMEOUT_MS:-45000}
+      PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
       DB_USER: ${DB_USER:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:-postgres}
       DB_HOST: db

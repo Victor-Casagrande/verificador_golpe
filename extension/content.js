@@ -3,7 +3,7 @@ const SENTRY_CONFIG = {
     // Alterar esta URL quando fizer o deploy da API (ex: https://api.sentryvzn.com.br)
     API_URL: 'http://localhost:3000',
     // Tempo máximo de espera para a resposta da API (em milissegundos)
-    TIMEOUT_MS: 10000 
+    TIMEOUT_MS: 90000
 };
 
 // Cria o overlay no ecrã caso a API detecte perigo (Protegido contra XSS via textContent)
@@ -55,27 +55,9 @@ function createAlertOverlay(status, reason) {
     });
 }
 
-// Executa a auditoria de acessibilidade garantindo que a biblioteca está presente
-async function runAccessibilityAudit() {
-    // Trava de segurança para evitar quebra silenciosa se o manifest.json falhar na injeção
-    if (typeof axe === 'undefined') {
-        console.warn("SentryVZN: Biblioteca Axe-core não encontrada no contexto da página. A saltar auditoria.");
-        return [];
-    }
-
-    try {
-        const results = await axe.run();
-        return results.violations;
-    } catch (error) {
-        console.error("SentryVZN: Erro ao executar a auditoria de acessibilidade do Axe-core:", error);
-        return [];
-    }
-}
-
-// Unifica o fluxo: avalia acessibilidade localmente e envia o payload consolidado para a API
+// A API executa axe-core no servidor (Puppeteer). A extensão envia apenas a URL.
 async function verifySiteAndAccessibility() {
     const currentUrl = window.location.href;
-    const accessibilityReport = await runAccessibilityAudit();
 
     // Correção: Uso de AbortController para implementar Timeout no pedido HTTP
     const controller = new AbortController();
@@ -90,10 +72,7 @@ async function verifySiteAndAccessibility() {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ 
-                url: currentUrl,
-                accessibility_report: accessibilityReport
-            }),
+            body: JSON.stringify({ url: currentUrl }),
             signal: controller.signal // Associa o cancelamento ao pedido
         });
 
@@ -108,6 +87,11 @@ async function verifySiteAndAccessibility() {
 
         if (data.security && data.security.is_danger) {
             createAlertOverlay(data.security.status, data.security.reason);
+        } else if (data.accessibility?.quality_rating !== undefined) {
+            console.info(
+                `Sentinela — nota de acessibilidade: ${data.accessibility.quality_rating}/100 ` +
+                `(${data.accessibility.violations_count} violações, fonte: ${data.accessibility.axe_source})`
+            );
         }
     } catch (error) {
         clearTimeout(timeoutId); // Garante a limpeza em caso de erro de rede

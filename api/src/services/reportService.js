@@ -22,8 +22,18 @@ const createReport = async (userId, { url, analysis_id, report_type, comment }) 
   });
 };
 
-const getWorstAccessibilityRankings = async ({ limit }) => {
-  return reportRepository.findWorstAccessibilitySites({ limit });
+const getWorstAccessibilityRankings = async ({ limit, min_analyses }) => {
+  return reportRepository.findWorstAccessibilitySites({
+    limit,
+    minAnalyses: min_analyses || 1
+  });
+};
+
+const getBestAccessibilityRankings = async ({ limit, min_analyses }) => {
+  return reportRepository.findBestAccessibilitySites({
+    limit,
+    minAnalyses: min_analyses || 1
+  });
 };
 
 const getMostReportedSites = async ({ limit }) => {
@@ -33,5 +43,6 @@ const getMostReportedSites = async ({ limit }) => {
 module.exports = {
   createReport,
   getWorstAccessibilityRankings,
+  getBestAccessibilityRankings,
   getMostReportedSites
 };

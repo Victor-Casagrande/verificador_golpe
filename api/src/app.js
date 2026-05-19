@@ -9,6 +9,7 @@ const authRoutes = require('./routes/authRoutes');
 const historyRoutes = require('./routes/historyRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const rankingRoutes = require('./routes/rankingRoutes');
+const urlScoreRoutes = require('./routes/urlScoreRoutes');
 const errorHandlerMiddleware = require('./middlewares/errorHandlerMiddleware');
 const rateLimitMiddleware = require('./middlewares/rateLimitMiddleware');
 
@@ -41,6 +42,7 @@ app.use('/auth', authRoutes);
 app.use('/users/history', historyRoutes);
 app.use('/reports', reportRoutes);
 app.use('/rankings', rankingRoutes);
+app.use('/urls/scores', urlScoreRoutes);
 app.use('/urls/analyze', verificationRoutes);
 
 // Rota básica de Health Check para testar a comunicação

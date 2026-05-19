@@ -43,7 +43,9 @@ const runGroup = async (label, urls, extra = {}) => {
     console.log(
       `${icon} [${status}] ${url}\n` +
       `    status: ${security.status || body.error?.message || '—'}\n` +
-      `    cached: ${body.cached ?? '—'} | score: ${body.accessibility?.accessibility_score ?? '—'}`
+        `    nota: ${body.accessibility?.quality_rating ?? '—'}/100 | ` +
+        `penalty: ${body.accessibility?.accessibility_score ?? '—'} | ` +
+        `axe: ${body.accessibility?.axe_source ?? '—'}`
     );
   }
 };

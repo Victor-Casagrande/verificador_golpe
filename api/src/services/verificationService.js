@@ -1,14 +1,15 @@
 const historyRepository = require('../repositories/historyRepository');
-const { computeAccessibilityScore } = require('../utils/accessibilityScore');
+const axeService = require('./axeService');
+const {
+  computeAccessibilityScore,
+  computeQualityRating
+} = require('../utils/accessibilityScore');
 const { checkStaticHeuristics } = require('../utils/urlHeuristics');
+const { extractSiteHost } = require('../utils/urlNormalize');
 
-const sanitizeAccessibilityReport = (report) => {
+const sanitizeClientReport = (report) => {
   if (!Array.isArray(report)) return [];
-
-  const MAX_VIOLATIONS = 50;
-  const limitedReport = report.slice(0, MAX_VIOLATIONS);
-
-  return limitedReport.map((violation) => ({
+  return report.slice(0, 50).map((violation) => ({
     id: violation.id,
     impact: violation.impact,
     description: violation.description,
@@ -17,122 +18,81 @@ const sanitizeAccessibilityReport = (report) => {
   }));
 };
 
+const buildAccessibilityPayload = (sanitizedReport, axeMeta) => {
+  const penaltyScore = computeAccessibilityScore(sanitizedReport);
+  const qualityRating = computeQualityRating(penaltyScore);
+
+  return {
+    report_received: sanitizedReport.length > 0,
+    violations_count: sanitizedReport.length,
+    sanitized_violations_stored: sanitizedReport.length,
+    accessibility_score: penaltyScore,
+    quality_rating: qualityRating,
+    axe_source: axeMeta.source,
+    axe_error: axeMeta.error || null
+  };
+};
+
 const buildResponse = ({
   analysisId,
   securityResult,
-  sanitizedReport,
-  rawReportLength,
-  cached
+  accessibility,
+  securityFromCache
 }) => ({
   analysis_id: analysisId,
-  security: securityResult,
-  accessibility: {
-    report_received: rawReportLength > 0,
-    violations_count: rawReportLength,
-    sanitized_violations_stored: sanitizedReport.length,
-    accessibility_score: computeAccessibilityScore(sanitizedReport)
+  security: {
+    ...securityResult,
+    from_cache: securityFromCache
   },
-  cached
+  accessibility,
+  cached: false
 });
 
-const persistAnalysis = async ({
-  userId,
-  urlString,
-  securityResult,
-  sanitizedReport,
-  accessibilityScore
-}) => {
-  const payload = {
-    url: urlString,
-    isDanger: securityResult.is_danger,
-    status: securityResult.status,
-    reason: securityResult.reason,
-    accessibilityViolations: sanitizedReport,
-    accessibilityScore
-  };
+const runSecurityCheck = async (urlString) => {
+  const cached = await historyRepository.findCachedSecurityByUrl(urlString);
 
-  if (userId) {
-    const saved = await historyRepository.saveAnalysis({ userId, ...payload });
-    return saved.id;
-  }
-
-  return historyRepository.saveAnonymousAnalysis(payload);
-};
-
-const verifyUrl = async (urlString, accessibilityReport, userId = null) => {
-  try {
-    const cachedRecord = await historyRepository.findCachedByUrl(urlString);
-
-    if (cachedRecord) {
-      console.log(`[SENTRY-CACHE] URL interceptada no banco local: ${urlString}`);
-
-      let analysisId = cachedRecord.id;
-
-      if (userId) {
-        const saved = await historyRepository.saveAnalysis({
-          userId,
-          url: urlString,
-          isDanger: cachedRecord.is_danger,
-          status: cachedRecord.status,
-          reason: cachedRecord.reason,
-          accessibilityViolations: cachedRecord.accessibility_violations || [],
-          accessibilityScore: cachedRecord.accessibility_score || 0
-        });
-        analysisId = saved.id;
-      }
-
-      return buildResponse({
-        analysisId,
-        securityResult: {
-          is_danger: cachedRecord.is_danger,
-          status: cachedRecord.status,
-          reason: cachedRecord.reason
-        },
-        sanitizedReport: cachedRecord.accessibility_violations || [],
-        rawReportLength: Array.isArray(accessibilityReport) ? accessibilityReport.length : 0,
-        cached: true
-      });
-    }
-  } catch (cacheError) {
-    console.warn('[SENTRY-WARNING] Falha ao consultar o cache:', cacheError.message);
+  if (cached) {
+    return {
+      result: {
+        is_danger: cached.is_danger,
+        status: cached.status,
+        reason: cached.reason
+      },
+      fromCache: true
+    };
   }
 
   const apiKey = process.env.GOOGLE_API_KEY;
   let securityResult = null;
-
-  const googleApiUrl = `https://safebrowsing.googleapis.com/v4/threatMatches:find?key=${apiKey}`;
-
-  const payload = {
-    client: {
-      clientId: 'ifc-videira-sentinela',
-      clientVersion: '1.0.0'
-    },
-    threatInfo: {
-      threatTypes: ['MALWARE', 'SOCIAL_ENGINEERING', 'UNWANTED_SOFTWARE'],
-      platformTypes: ['ANY_PLATFORM'],
-      threatEntryTypes: ['URL'],
-      threatEntries: [{ url: urlString }]
-    }
-  };
 
   try {
     if (!apiKey) {
       throw new Error('Chave da API do Google ausente no .env.');
     }
 
+    const googleApiUrl = `https://safebrowsing.googleapis.com/v4/threatMatches:find?key=${apiKey}`;
+
     const response = await fetch(googleApiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({
+        client: { clientId: 'ifc-videira-sentinela', clientVersion: '1.0.0' },
+        threatInfo: {
+          threatTypes: ['MALWARE', 'SOCIAL_ENGINEERING', 'UNWANTED_SOFTWARE'],
+          platformTypes: ['ANY_PLATFORM'],
+          threatEntryTypes: ['URL'],
+          threatEntries: [{ url: urlString }]
+        }
+      })
     });
 
     if (!response.ok) {
-      throw new Error(`Google API rejeitou a requisição HTTP: ${response.status}`);
+      throw new Error(`Google API HTTP ${response.status}`);
     }
 
     const data = await response.json();
 
-    if (data.matches && data.matches.length > 0) {
+    if (data.matches?.length > 0) {
       securityResult = {
         is_danger: true,
         status: 'GOLPE CONFIRMADO',
@@ -143,37 +103,81 @@ const verifyUrl = async (urlString, accessibilityReport, userId = null) => {
     }
   } catch (externalApiError) {
     console.warn(
-      `[SENTRY-WARNING] Falha na comunicação externa. Acionando Fallback Local. Motivo: ${externalApiError.message}`
+      `[SENTRY-WARNING] Falha na verificação externa. Fallback local: ${externalApiError.message}`
     );
     securityResult = checkStaticHeuristics(urlString);
   }
 
-  const sanitizedReport = sanitizeAccessibilityReport(accessibilityReport);
-  const accessibilityScore = computeAccessibilityScore(sanitizedReport);
+  return { result: securityResult, fromCache: false };
+};
 
-  let savedRecordId = null;
+const resolveAccessibilityReport = async (urlString, clientReport) => {
+  const serverAudit = await axeService.auditUrl(urlString);
+
+  if (serverAudit.violations.length > 0 || !serverAudit.error) {
+    return {
+      violations: serverAudit.violations,
+      source: serverAudit.source,
+      error: serverAudit.error
+    };
+  }
+
+  const clientViolations = sanitizeClientReport(clientReport);
+  if (clientViolations.length > 0) {
+    return {
+      violations: clientViolations,
+      source: 'client',
+      error: serverAudit.error
+    };
+  }
+
+  return {
+    violations: [],
+    source: serverAudit.source,
+    error: serverAudit.error
+  };
+};
+
+const verifyUrl = async (urlString, accessibilityReport, userId = null) => {
+  const siteHost = extractSiteHost(urlString);
+
+  const { result: securityResult, fromCache: securityFromCache } =
+    await runSecurityCheck(urlString);
+
+  const axeMeta = await resolveAccessibilityReport(urlString, accessibilityReport);
+  const accessibility = buildAccessibilityPayload(axeMeta.violations, axeMeta);
+
+  let analysisId = null;
 
   try {
-    savedRecordId = await persistAnalysis({
+    const saved = await historyRepository.saveAnalysis({
       userId,
-      urlString,
-      securityResult,
-      sanitizedReport,
-      accessibilityScore
+      url: urlString,
+      siteHost,
+      isDanger: securityResult.is_danger,
+      status: securityResult.status,
+      reason: securityResult.reason,
+      accessibilityViolations: axeMeta.violations,
+      accessibilityScore: accessibility.accessibility_score,
+      qualityRating: accessibility.quality_rating,
+      axeSource: accessibility.axe_source,
+      securityFromCache: securityFromCache
     });
+    analysisId = saved?.id ?? null;
   } catch (dbError) {
-    console.error('Falha ao persistir a análise no PostgreSQL:', dbError);
+    console.error('Falha ao persistir análise:', dbError);
   }
 
   return buildResponse({
-    analysisId: savedRecordId,
+    analysisId,
     securityResult,
-    sanitizedReport,
-    rawReportLength: accessibilityReport ? accessibilityReport.length : 0,
-    cached: false
+    accessibility,
+    securityFromCache
   });
 };
 
 module.exports = {
-  verifyUrl
+  verifyUrl,
+  runSecurityCheck,
+  resolveAccessibilityReport
 };

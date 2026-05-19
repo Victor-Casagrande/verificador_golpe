@@ -43,6 +43,20 @@ describe('API routes (integration)', () => {
     assert.equal(res.status, 200);
     assert.ok(res.body.security);
     assert.equal(typeof res.body.security.is_danger, 'boolean');
+    assert.ok(res.body.accessibility);
+    assert.equal(typeof res.body.accessibility.quality_rating, 'number');
+    assert.equal(res.body.cached, false);
+  });
+
+  it('GET /urls/scores/history exige url válida', async () => {
+    const res = await request(app).get('/urls/scores/history');
+    assert.equal(res.status, 400);
+  });
+
+  it('GET /rankings/accessibility/best retorna ranking', async () => {
+    const res = await request(app).get('/rankings/accessibility/best');
+    assert.equal(res.status, 200);
+    assert.ok(Array.isArray(res.body.rankings));
   });
 
   it('GET /users/history exige autenticação', async () => {

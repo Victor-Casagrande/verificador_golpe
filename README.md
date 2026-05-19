@@ -17,8 +17,8 @@ flowchart LR
     EXT[Extensão Chrome] -->|POST /urls/analyze| API[API Node.js]
     API --> GSB[Google Safe Browsing]
     API --> HEU[Heurísticas locais]
+    API --> AXE[axe-core + Puppeteer]
     API --> DB[(PostgreSQL)]
-    EXT -->|axe.run| PAGE[Página web]
 ```
 
 ## Estrutura do repositório
@@ -224,21 +224,22 @@ Com a API rodando:
 
 ### `POST /urls/analyze`
 
-Analisa a URL e persiste no banco. Com token JWT, a análise é vinculada ao usuário (histórico).
+Fluxo: **(1)** Google Safe Browsing + heurísticas → **(2)** axe-core no servidor (Puppeteer) → **(3)** notas e persistência.
+
+Cada chamada grava uma **nova análise** (o mesmo site em datas diferentes pode ter notas diferentes). O cache de 24h aplica-se **apenas à segurança**; a acessibilidade é sempre reavaliada.
 
 **Corpo da requisição:**
 
 ```json
 {
-  "url": "https://exemplo.com/pagina",
-  "accessibility_report": []
+  "url": "https://exemplo.com/pagina"
 }
 ```
 
 | Campo | Tipo | Obrigatório | Descrição |
 |-------|------|-------------|-----------|
 | `url` | string | Sim | URL da página (http ou https) |
-| `accessibility_report` | array | Não | Violações retornadas pelo axe-core |
+| `accessibility_report` | array | Não | Fallback se o axe no servidor falhar |
 
 **Resposta de sucesso (200):**
 
@@ -248,23 +249,33 @@ Analisa a URL e persiste no banco. Com token JWT, a análise é vinculada ao usu
   "security": {
     "is_danger": false,
     "status": "Seguro",
-    "reason": "Nenhuma ameaça detectada localmente ou nos bancos de dados."
+    "reason": "...",
+    "from_cache": false
   },
   "accessibility": {
-    "report_received": true,
-    "violations_count": 3,
-    "sanitized_violations_stored": 3,
-    "accessibility_score": 12
+    "quality_rating": 89,
+    "accessibility_score": 11,
+    "violations_count": 2,
+    "axe_source": "server"
   },
   "cached": false
 }
 ```
 
+| Métrica | Significado |
+|---------|-------------|
+| `quality_rating` | 0–100 — **maior = melhor** acessibilidade |
+| `accessibility_score` | Penalidade — **maior = pior** |
+
 ### `GET /users/history` (autenticado)
 
-Lista o histórico de análises do usuário logado.
+Lista o histórico de análises do usuário logado (cada entrada com `quality_rating` e data).
 
-Query params: `limit` (padrão 20, máx. 100), `offset` (padrão 0).
+Query params: `limit`, `offset`, `url` (filtrar por URL específica).
+
+### `GET /urls/scores/history?url=...`
+
+Timeline pública das notas de uma URL ao longo do tempo (evolução por data).
 
 ### `POST /reports` (autenticado)
 
@@ -290,7 +301,11 @@ Envia feedback sobre uma URL ou análise.
 
 #### `GET /rankings/accessibility/worst?limit=10`
 
-Sites com **piores pontuações de acessibilidade** (maior score = pior). Público.
+Sites com **piores notas** (menor `quality_rating` médio por host). Público.
+
+#### `GET /rankings/accessibility/best?limit=10`
+
+Sites com **melhores notas** (maior `quality_rating` médio por host). Público.
 
 #### `GET /rankings/reports/most?limit=10`
 
@@ -318,7 +333,7 @@ Aplicadas quando o Google Safe Browsing não encontra ameaças:
 | Recurso | Descrição |
 |---------|-----------|
 | Detecção de golpes | Overlay vermelho com opções **Sair** e **Ignorar aviso** |
-| Acessibilidade | Auditoria via axe-core em cada página (`document_idle`) |
+| Acessibilidade | Nota gerada pela API (axe-core no servidor); exibida no console da extensão |
 | Permissões | `activeTab` e `<all_urls>` para content scripts |
 
 A extensão envia requisições para `http://localhost:3000/urls/analyze`. A API precisa estar em execução na mesma máquina.

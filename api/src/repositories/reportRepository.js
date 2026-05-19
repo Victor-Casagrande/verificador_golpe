@@ -17,19 +17,46 @@ const create = async ({ userId, urlAnalysisId, url, reportType, comment }) => {
   return result.rows[0];
 };
 
+/** Piores sites: menor quality_rating / maior penalty score. */
 const findWorstAccessibilitySites = async ({ limit = 10, minAnalyses = 1 } = {}) => {
   const result = await db.query(
     `SELECT
-       url,
-       ROUND(AVG(accessibility_score)::numeric, 2) AS avg_accessibility_score,
-       MAX(accessibility_score) AS max_accessibility_score,
+       site_host,
+       COUNT(DISTINCT url)::int AS urls_count,
+       ROUND(AVG(accessibility_score)::numeric, 2) AS avg_penalty_score,
+       ROUND(AVG(quality_rating)::numeric, 2) AS avg_quality_rating,
+       MIN(quality_rating) AS worst_quality_rating,
+       MAX(accessibility_score) AS max_penalty_score,
        COUNT(*)::int AS analysis_count,
-       SUM(CASE WHEN is_danger THEN 1 ELSE 0 END)::int AS danger_count
+       MAX(created_at) AS last_analyzed_at
      FROM url_analyses
-     WHERE accessibility_score > 0
-     GROUP BY url
+     WHERE site_host IS NOT NULL
+     GROUP BY site_host
      HAVING COUNT(*) >= $2
-     ORDER BY avg_accessibility_score DESC, max_accessibility_score DESC
+     ORDER BY avg_quality_rating ASC, avg_penalty_score DESC
+     LIMIT $1`,
+    [limit, minAnalyses]
+  );
+  return result.rows;
+};
+
+/** Melhores sites: maior quality_rating. */
+const findBestAccessibilitySites = async ({ limit = 10, minAnalyses = 1 } = {}) => {
+  const result = await db.query(
+    `SELECT
+       site_host,
+       COUNT(DISTINCT url)::int AS urls_count,
+       ROUND(AVG(accessibility_score)::numeric, 2) AS avg_penalty_score,
+       ROUND(AVG(quality_rating)::numeric, 2) AS avg_quality_rating,
+       MAX(quality_rating) AS best_quality_rating,
+       MIN(accessibility_score) AS min_penalty_score,
+       COUNT(*)::int AS analysis_count,
+       MAX(created_at) AS last_analyzed_at
+     FROM url_analyses
+     WHERE site_host IS NOT NULL
+     GROUP BY site_host
+     HAVING COUNT(*) >= $2
+     ORDER BY avg_quality_rating DESC, avg_penalty_score ASC
      LIMIT $1`,
     [limit, minAnalyses]
   );
@@ -57,5 +84,6 @@ module.exports = {
   VALID_REPORT_TYPES,
   create,
   findWorstAccessibilitySites,
+  findBestAccessibilitySites,
   findReportStatsByUrl
 };

@@ -23,6 +23,8 @@
     "express-rate-limit": "^7.5.0",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
+    "@axe-core/puppeteer": "4.10.1",
+    "puppeteer-core": "24.12.1",
     "pg": "^8.20.0",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
@@ -31,5 +33,9 @@
   "devDependencies": {
     "nodemon": "^3.1.14",
     "supertest": "^7.1.0"
+  },
+  "overrides": {
+    "puppeteer-core": "24.12.1",
+    "puppeteer": "24.12.1"
   }
 }

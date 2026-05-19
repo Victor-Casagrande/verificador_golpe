@@ -17,7 +17,16 @@ const computeAccessibilityScore = (violations) => {
   }, 0);
 };
 
+/** Nota de 0–100: quanto maior, melhor a acessibilidade. */
+const computeQualityRating = (penaltyScore) => {
+  if (!penaltyScore || penaltyScore <= 0) {
+    return 100;
+  }
+  return Math.max(0, 100 - Math.min(100, penaltyScore));
+};
+
 module.exports = {
   computeAccessibilityScore,
+  computeQualityRating,
   IMPACT_WEIGHTS
 };
