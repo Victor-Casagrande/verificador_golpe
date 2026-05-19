@@ -16,7 +16,7 @@ const findById = async (id) => {
   return result.rows[0] || null;
 };
 
-const create = async ({ name, email, passwordHash }) => {
+const create = async ({ name, email, passwordHash = null }) => {
   const result = await db.query(
     `INSERT INTO users (name, email, password_hash)
      VALUES ($1, $2, $3)

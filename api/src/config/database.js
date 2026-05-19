@@ -1,6 +1,13 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 
+if (process.env.NODE_ENV === 'test') {
+  module.exports = {
+    query: async () => ({ rows: [], rowCount: 0 })
+  };
+  return;
+}
+
 // Instanciação do Pool com as credenciais do .env
 const pool = new Pool({
   user: process.env.DB_USER,

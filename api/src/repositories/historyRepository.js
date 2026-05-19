@@ -83,7 +83,7 @@ const saveAnonymousAnalysis = async ({
       accessibilityScore
     ]
   );
-  return result.rows[0].id;
+  return result.rows[0]?.id ?? null;
 };
 
 module.exports = {

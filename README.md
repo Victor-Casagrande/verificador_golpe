@@ -202,6 +202,26 @@ Resposta (registro e login):
 }
 ```
 
+#### OAuth (GitHub e Google)
+
+O **e-mail é a chave da conta**: login via GitHub ou Google com o mesmo e-mail unifica o acesso à mesma conta (e ao histórico).
+
+| Rota | Descrição |
+|------|-----------|
+| `GET /auth/oauth/providers` | Lista provedores configurados |
+| `GET /auth/oauth/github` | Inicia login GitHub |
+| `GET /auth/oauth/google` | Inicia login Google |
+| `GET /auth/oauth/{provider}/callback` | Callback — retorna JSON com JWT |
+
+Configure no `.env`: `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GITHUB_CALLBACK_URL` e equivalentes `GOOGLE_*`.
+
+### Documentação interativa (Swagger)
+
+Com a API rodando:
+
+- UI: [http://localhost:3000/api/docs](http://localhost:3000/api/docs)
+- JSON OpenAPI: `GET /api/docs.json`
+
 ### `POST /urls/analyze`
 
 Analisa a URL e persiste no banco. Com token JWT, a análise é vinculada ao usuário (histórico).
@@ -310,11 +330,28 @@ A extensão envia requisições para `http://localhost:3000/urls/analyze`. A API
 | `npm start` | `api/` | Inicia o servidor (produção / Docker) |
 | `npm run dev` | `api/` | Inicia o servidor com nodemon |
 | `docker compose up --build` | raiz | Sobe API + PostgreSQL |
-| `npm test` | `api/` | Ainda não implementado |
+| `npm test` | `api/` | Testes unitários + integração |
+| `npm run test:unit` | `api/` | Só testes unitários |
+| `npm run test:urls` | `api/` | Script contra API local (heurísticas/URLs) |
+
+## Testes
+
+```bash
+cd api
+npm install
+npm test
+```
+
+Testar verificação de URLs com a API em execução (`npm run dev`):
+
+```bash
+npm run test:urls
+# ou: node scripts/test-urls-local.js --base-url=http://localhost:3000
+```
+
+Fixtures em `api/tests/fixtures/test-urls.json` (URLs seguras, suspeitas e inválidas).
 
 ## Limitações conhecidas
-
-- **Testes automatizados:** não implementados.
 - **Histórico na UI:** a API expõe `GET /users/history`, mas a extensão ainda não exibe histórico ao usuário.
 - **Falha do banco:** se o PostgreSQL estiver indisponível, o alerta de segurança ainda é retornado; apenas a persistência falha silenciosamente.
 - **`extension/api_server.py`:** backend FastAPI legado, mantido no repositório mas **não utilizado** pelo `content.js` atual.

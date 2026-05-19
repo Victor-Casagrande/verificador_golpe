@@ -33,6 +33,13 @@ const login = async ({ email, password }) => {
     throw new AppError('Credenciais inválidas.', 401);
   }
 
+  if (!user.password_hash) {
+    throw new AppError(
+      'Esta conta utiliza login social. Autentique-se via GitHub ou Google.',
+      401
+    );
+  }
+
   const passwordMatch = await bcrypt.compare(password, user.password_hash);
   if (!passwordMatch) {
     throw new AppError('Credenciais inválidas.', 401);
