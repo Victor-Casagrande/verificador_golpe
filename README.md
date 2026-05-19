@@ -98,7 +98,7 @@ curl http://localhost:3000/api/status
 | `api` | `sentinela-api` | 3000 | Backend Node.js |
 | `db` | `sentinela-db` | 5432 | PostgreSQL 16 |
 
-O schema `url_analyses` é criado automaticamente via `db/init/01-schema.sql` na primeira inicialização do banco.
+Os schemas são criados automaticamente via `db/init/` na primeira inicialização do banco. Se o volume do Postgres já existia antes de novas migrations, execute `docker compose down -v` ou rode manualmente os scripts em `db/init/`.
 
 > A extensão Chrome continua rodando no navegador do host e aponta para `http://localhost:3000`. Com Docker, a porta 3000 é publicada no host — não é necessário alterar a extensão.
 
@@ -157,13 +157,54 @@ curl http://localhost:3000/api/status
 
 ## API
 
+Rotas públicas não exigem token. Rotas protegidas usam header:
+
+```
+Authorization: Bearer <token_jwt>
+```
+
 ### `GET /api/status`
 
 Health check da API.
 
+### Autenticação
+
+#### `POST /auth/register`
+
+```json
+{
+  "name": "Maria Silva",
+  "email": "maria@email.com",
+  "password": "senha123"
+}
+```
+
+#### `POST /auth/login`
+
+```json
+{
+  "email": "maria@email.com",
+  "password": "senha123"
+}
+```
+
+Resposta (registro e login):
+
+```json
+{
+  "sucesso": true,
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": 1,
+    "name": "Maria Silva",
+    "email": "maria@email.com"
+  }
+}
+```
+
 ### `POST /urls/analyze`
 
-Analisa a URL informada e persiste o resultado no banco.
+Analisa a URL e persiste no banco. Com token JWT, a análise é vinculada ao usuário (histórico).
 
 **Corpo da requisição:**
 
@@ -191,10 +232,49 @@ Analisa a URL informada e persiste o resultado no banco.
   },
   "accessibility": {
     "report_received": true,
-    "violations_count": 3
-  }
+    "violations_count": 3,
+    "sanitized_violations_stored": 3,
+    "accessibility_score": 12
+  },
+  "cached": false
 }
 ```
+
+### `GET /users/history` (autenticado)
+
+Lista o histórico de análises do usuário logado.
+
+Query params: `limit` (padrão 20, máx. 100), `offset` (padrão 0).
+
+### `POST /reports` (autenticado)
+
+Envia feedback sobre uma URL ou análise.
+
+```json
+{
+  "url": "https://exemplo.com",
+  "analysis_id": 1,
+  "report_type": "false_positive",
+  "comment": "Site legítimo, falso positivo."
+}
+```
+
+| `report_type` | Descrição |
+|---------------|-----------|
+| `false_positive` | Alerta incorreto |
+| `confirmed_scam` | Golpe confirmado pelo usuário |
+| `accessibility_issue` | Problema de acessibilidade |
+| `other` | Outros |
+
+### Rankings
+
+#### `GET /rankings/accessibility/worst?limit=10`
+
+Sites com **piores pontuações de acessibilidade** (maior score = pior). Público.
+
+#### `GET /rankings/reports/most?limit=10`
+
+Sites com **mais denúncias** dos usuários. Público.
 
 **Possíveis status de segurança:**
 
@@ -235,7 +315,7 @@ A extensão envia requisições para `http://localhost:3000/urls/analyze`. A API
 ## Limitações conhecidas
 
 - **Testes automatizados:** não implementados.
-- **Histórico na UI:** a API persiste análises no PostgreSQL, mas a extensão ainda não exibe histórico ao usuário.
+- **Histórico na UI:** a API expõe `GET /users/history`, mas a extensão ainda não exibe histórico ao usuário.
 - **Falha do banco:** se o PostgreSQL estiver indisponível, o alerta de segurança ainda é retornado; apenas a persistência falha silenciosamente.
 - **`extension/api_server.py`:** backend FastAPI legado, mantido no repositório mas **não utilizado** pelo `content.js` atual.
 

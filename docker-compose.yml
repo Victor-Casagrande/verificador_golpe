@@ -30,6 +30,8 @@ services:
     environment:
       PORT: 3000
       GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      JWT_SECRET: ${JWT_SECRET:-dev_secret_change_in_production}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
       DB_USER: ${DB_USER:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:-postgres}
       DB_HOST: db
