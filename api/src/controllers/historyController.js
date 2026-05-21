@@ -3,24 +3,28 @@ const AppError = require('../utils/AppError');
 const { formatAnalysisRow } = require('../utils/formatAnalysis');
 const { validateUrl } = require('../utils/validators');
 
-// Controller para lidar com o histórico de análises dos usuários
-const getUserHistory = async (req, res, next) => {
+const parsePagination = (queryValue, defaultValue, maxLimit = null) => {
+  if (queryValue === undefined || queryValue === null) return defaultValue;
+  
+  const parsed = parseInt(queryValue, 10);
+  if (Number.isNaN(parsed) || parsed < 0) {
+    throw new AppError('Os parâmetros de paginação (limit/offset) devem ser números inteiros e positivos.', 400);
+  }
+  
+  if (maxLimit && parsed > maxLimit) return maxLimit;
+  return parsed;
+};
 
+const getUserHistory = async (req, res, next) => {
   try {
-    // Parâmetros de paginação e filtros opcionais
-    const limit = Math.min(parseInt(req.query.limit, 10) || 20, 100);
-    const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
+    const limit = parsePagination(req.query.limit, 20, 100);
+    const offset = parsePagination(req.query.offset, 0);
     const urlFilter = req.query.url || null;
 
-    if (Number.isNaN(limit) || Number.isNaN(offset)) {
-      throw new AppError('Parâmetros limit e offset devem ser numéricos.', 400);
-    }
-
     if (urlFilter && !validateUrl(urlFilter)) {
-      throw new AppError('Parâmetro url inválido.', 400);
+      throw new AppError('O parâmetro de filtro de URL fornecido é inválido.', 400);
     }
 
-    // Buscar o histórico do usuário com contagem total para paginação
     const [items, total] = await Promise.all([
       historyRepository.findByUserId(req.user.id, { limit, offset, urlFilter }),
       historyRepository.countByUserId(req.user.id, urlFilter)
@@ -45,15 +49,14 @@ const getUserHistory = async (req, res, next) => {
   }
 };
 
-// Controller para obter a linha do tempo de pontuações de uma URL específica
 const getUrlScoreTimeline = async (req, res, next) => {
   try {
     const url = req.query.url;
     if (!url || !validateUrl(url)) {
-      throw new AppError('Query param url é obrigatório e deve ser válido.', 400);
+      throw new AppError('O parâmetro "url" é obrigatório e deve conter um link válido.', 400);
     }
 
-    const limit = Math.min(parseInt(req.query.limit, 10) || 30, 100);
+    const limit = parsePagination(req.query.limit, 30, 100);
     const timeline = await historyRepository.findUrlScoreTimeline(url, { limit });
 
     return res.status(200).json({

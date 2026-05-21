@@ -1,20 +1,22 @@
 const logger = require('../utils/logger');
 
-// Middlware central de tratamento de erros
 const errorHandlerMiddleware = (err, req, res, next) => {
   const status = err.status || 500;
+  const isOperational = err.isOperational || false;
 
   if (status >= 500) {
-    logger.error(err.stack);
+    logger.error(`[FATAL] ${err.name || 'Error'}: ${err.message}\nStack: ${err.stack}`);
   } else {
-    logger.warn(`${status} - ${err.message}`);
+    logger.warn(`[API] ${status} - ${err.message}`);
   }
 
-  const message = err.message || 'Internal Server Error';
+  const clientMessage = (status === 500 && !isOperational)
+    ? 'Ocorreu um erro interno no servidor. A nossa equipa técnica já foi notificada.'
+    : err.message || 'Internal Server Error';
 
   res.status(status).json({
     error: {
-      message,
+      message: clientMessage,
       status,
       timestamp: new Date().toISOString()
     }
