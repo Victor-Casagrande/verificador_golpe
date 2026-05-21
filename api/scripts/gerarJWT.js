@@ -1,13 +1,22 @@
-const JWT = require('jsonwebtoken');
+require('dotenv').config();
 
-// Gerar um JWT para testes
-const token = JWT.sign(
-  {
-    id: '12345',
-    role: 'admin'
-  },
-  'altere_esta_chave_em_producao', // Chave secreta temporaria de produção
-  { expiresIn: '1h' }
+const jwt = require('jsonwebtoken');
+
+console.log(
+  'JWT_SECRET:',
+  process.env.JWT_SECRET
 );
 
-console.log('JWT Gerado:', token);
+const token = jwt.sign(
+  {
+    id: '1',
+    role: 'admin'
+  },
+  /*process.env.JWT_SECRET ||*/ 'altere_esta_chave_em_producao',
+  {
+    subject: '1',
+    expiresIn: '1h'
+  }
+);
+
+console.log(token);

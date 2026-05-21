@@ -3,8 +3,11 @@ const AppError = require('../utils/AppError');
 const { formatAnalysisRow } = require('../utils/formatAnalysis');
 const { validateUrl } = require('../utils/validators');
 
+// Controller para lidar com o histórico de análises dos usuários
 const getUserHistory = async (req, res, next) => {
+
   try {
+    // Parâmetros de paginação e filtros opcionais
     const limit = Math.min(parseInt(req.query.limit, 10) || 20, 100);
     const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
     const urlFilter = req.query.url || null;
@@ -17,6 +20,7 @@ const getUserHistory = async (req, res, next) => {
       throw new AppError('Parâmetro url inválido.', 400);
     }
 
+    // Buscar o histórico do usuário com contagem total para paginação
     const [items, total] = await Promise.all([
       historyRepository.findByUserId(req.user.id, { limit, offset, urlFilter }),
       historyRepository.countByUserId(req.user.id, urlFilter)
@@ -41,6 +45,7 @@ const getUserHistory = async (req, res, next) => {
   }
 };
 
+// Controller para obter a linha do tempo de pontuações de uma URL específica
 const getUrlScoreTimeline = async (req, res, next) => {
   try {
     const url = req.query.url;
