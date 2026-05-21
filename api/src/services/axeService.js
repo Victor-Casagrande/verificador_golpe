@@ -30,9 +30,20 @@ const getExecutablePath = () => {
   return '/usr/bin/chromium';
 };
 
+const closeBrowser = async () => {
+  if (idleTimeoutId) {
+    clearTimeout(idleTimeoutId);
+    idleTimeoutId = null;
+  }
+  if (browserInstance) {
+    await browserInstance.close().catch(() => {});
+    browserInstance = null;
+  }
+  pagesProcessed = 0;
+};
+
 const resetIdleTimeout = () => {
   if (idleTimeoutId) clearTimeout(idleTimeoutId);
-  
   idleTimeoutId = setTimeout(async () => {
     console.log('[SENTRY-AXE] Encerrando o navegador Chromium por inatividade (Libertação de RAM).');
     await closeBrowser();
@@ -49,7 +60,16 @@ const getBrowser = async () => {
     browserInstance = await puppeteer.launch({
       headless: true,
       executablePath: getExecutablePath(),
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--disable-gpu',
+        '--no-first-run',
+        '--no-zygote',
+        '--disable-extensions'
+      ]
     });
     pagesProcessed = 0;
   }
@@ -64,7 +84,6 @@ const getBrowser = async () => {
  * @param {string} urlString - URL a auditar
  * @param {{ devMode?: boolean }} [options] - Quando devMode=true, inclui detailedViolations no retorno
  */
-
 const auditUrl = async (urlString, options = {}) => {
   const { devMode = false } = options;
   if (!isAxeEnabled()) {
@@ -75,17 +94,36 @@ const auditUrl = async (urlString, options = {}) => {
     };
   }
 
-  let page;
+  let context = null;
+  let page = null;
+
   try {
     const browser = await getBrowser();
-    page = await browser.newPage();
     pagesProcessed++;
+
+    context = await browser.createBrowserContext();
+    page = await context.newPage();
+
+    await page.setRequestInterception(true);
+    page.on('request', (req) => {
+      const resourceType = req.resourceType();
+      if (['image', 'stylesheet', 'font', 'media'].includes(resourceType)) {
+        req.abort().catch(() => {});
+      } else {
+        req.continue().catch(() => {});
+      }
+    });
+
+    page.on('dialog', async dialog => {
+      await dialog.dismiss().catch(() => {});
+    });
 
     await page.setViewport({ width: 1280, height: 720 });
     page.setDefaultNavigationTimeout(AXE_TIMEOUT_MS);
+    page.setDefaultTimeout(AXE_TIMEOUT_MS);
 
     await page.goto(urlString, {
-      waitUntil: 'networkidle2',
+      waitUntil: 'domcontentloaded',
       timeout: AXE_TIMEOUT_MS
     });
 
@@ -112,25 +150,16 @@ const auditUrl = async (urlString, options = {}) => {
       error: error.message
     };
   } finally {
-    if (page) {
+    if (context) {
+      await context.close().catch(() => {});
+    } else if (page) {
       await page.close().catch(() => {});
     }
   }
 };
 
-const closeBrowser = async () => {
-  if (idleTimeoutId) {
-    clearTimeout(idleTimeoutId);
-    idleTimeoutId = null;
-  }
-  
-  if (browserInstance) {
-    await browserInstance.close().catch(() => {});
-    browserInstance = null;
-  }
-  
-  pagesProcessed = 0;
-};
+process.on('SIGTERM', async () => await closeBrowser());
+process.on('SIGINT', async () => await closeBrowser());
 
 module.exports = {
   auditUrl,
