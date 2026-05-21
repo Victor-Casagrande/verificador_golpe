@@ -13,6 +13,8 @@ const urlScoreRoutes = require('./routes/urlScoreRoutes');
 const errorHandlerMiddleware = require('./middlewares/errorHandlerMiddleware');
 const rateLimitMiddleware = require('./middlewares/rateLimitMiddleware');
 const securityAnalyticsRoutes = require('./routes/securityAnalyticsRoutes');
+const securityAnalyticsRoutes = require('./routes/securityAnalyticsRoutes');
+const accessibilityAnalyticsRoutes = require('./routes/accessibilityAnalyticsRoutes');
 
 const app = express();
 
@@ -39,6 +41,9 @@ app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, { explorer: t
 app.get('/api/docs.json', (req, res) => res.json(swaggerSpec));
 
 app.use('/api/analytics/security', securityAnalyticsRoutes);
+
+app.use('/api/analytics/security', securityAnalyticsRoutes);
+app.use('/api/analytics/accessibility', accessibilityAnalyticsRoutes);
 
 // Rotas
 app.use('/auth', authRoutes);
