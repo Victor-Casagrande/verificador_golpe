@@ -250,6 +250,7 @@ Cada chamada grava uma **nova análise** (o mesmo site em datas diferentes pode 
 |-------|------|-------------|-----------|
 | `url` | string | Sim | URL da página (http ou https) |
 | `accessibility_report` | array | Não | Fallback se o axe no servidor falhar |
+| `dev_mode` | boolean | Não | Quando `true`, inclui `accessibility.detailed_report` com exceções axe-core detalhadas |
 
 **Resposta de sucesso (200):**
 

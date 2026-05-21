@@ -7,6 +7,8 @@
  *     description: |
  *       Fluxo: (1) verificação de segurança Google/heurísticas; (2) auditoria axe-core via Puppeteer;
  *       (3) gera accessibility_score (penalidade) e quality_rating (0–100, maior = melhor).
+ *       Com `dev_mode: true`, a resposta inclui `accessibility.detailed_report` com exceções
+ *       completas do axe-core (tags, nós afetados, HTML e failureSummary) para depuração.
  *       Cada chamada grava nova análise — o mesmo site em datas diferentes pode ter notas diferentes.
  *       Header Authorization opcional vincula ao histórico do usuário.
  *     security:

@@ -1,7 +1,13 @@
 const puppeteer = require('puppeteer-core');
 const { AxePuppeteer } = require('@axe-core/puppeteer');
+const {
+  sanitizeViolations,
+  formatDetailedViolations
+} = require('../utils/axeViolations');
 
+/** Tempo máximo (ms) para navegação e análise axe-core via Puppeteer. */
 const AXE_TIMEOUT_MS = parseInt(process.env.AXE_TIMEOUT_MS, 10) || 45000;
+
 let browserInstance = null;
 
 const isAxeEnabled = () =>
@@ -31,22 +37,14 @@ const getBrowser = async () => {
   return browserInstance;
 };
 
-const sanitizeViolations = (violations) => {
-  if (!Array.isArray(violations)) return [];
-
-  return violations.slice(0, 50).map((violation) => ({
-    id: violation.id,
-    impact: violation.impact,
-    description: violation.description,
-    helpUrl: violation.helpUrl,
-    nodes_count: Array.isArray(violation.nodes) ? violation.nodes.length : 0
-  }));
-};
-
 /**
  * Executa axe-core na URL via Puppeteer (navegador headless).
+ *
+ * @param {string} urlString - URL a auditar
+ * @param {{ devMode?: boolean }} [options] - Quando devMode=true, inclui detailedViolations no retorno
  */
-const auditUrl = async (urlString) => {
+const auditUrl = async (urlString, options = {}) => {
+  const { devMode = false } = options;
   if (!isAxeEnabled()) {
     return {
       violations: [],
@@ -68,13 +66,20 @@ const auditUrl = async (urlString) => {
     });
 
     const results = await new AxePuppeteer(page).analyze();
-    const violations = sanitizeViolations(results.violations);
+    const rawViolations = results.violations || [];
+    const violations = sanitizeViolations(rawViolations);
 
-    return {
+    const payload = {
       violations,
       source: 'server',
       error: null
     };
+
+    if (devMode) {
+      payload.detailedViolations = formatDetailedViolations(rawViolations);
+    }
+
+    return payload;
   } catch (error) {
     console.warn(`[SENTRY-AXE] Falha ao auditar ${urlString}:`, error.message);
     return {
@@ -100,5 +105,6 @@ module.exports = {
   auditUrl,
   closeBrowser,
   isAxeEnabled,
-  sanitizeViolations
+  sanitizeViolations,
+  formatDetailedViolations
 };

@@ -2,7 +2,7 @@ const { validateUrl } = require('../utils/validators');
 
 // Middleware para verificar a validade da URL e a assinatura do payload no corpo da requisição
 const validateVerificationRequest = (req, res, next) => {
-  const { url, accessibility_report } = req.body;
+  const { url, accessibility_report, dev_mode } = req.body;
 
   // 1. Validação de presença e formato da URL
   if (!url) {
@@ -40,6 +40,14 @@ const validateVerificationRequest = (req, res, next) => {
         message: 'Estrutura inválida dentro de accessibility_report. Esperava-se um array de objetos JSON.'
       });
     }
+  }
+
+  // dev_mode: ativa relatório detalhado de acessibilidade (exceções axe-core com nós)
+  if (dev_mode !== undefined && dev_mode !== true && dev_mode !== false && dev_mode !== 'true') {
+    return res.status(400).json({
+      error: 'Bad Request',
+      message: 'O campo dev_mode deve ser booleano (true/false) ou a string "true".'
+    });
   }
 
   next();

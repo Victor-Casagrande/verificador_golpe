@@ -48,7 +48,13 @@ const options = {
           required: ['url'],
           properties: {
             url: { type: 'string', format: 'uri', example: 'https://exemplo.com' },
-            accessibility_report: { type: 'array', items: { type: 'object' } }
+            accessibility_report: { type: 'array', items: { type: 'object' } },
+            dev_mode: {
+              type: 'boolean',
+              default: false,
+              description:
+                'Quando true, inclui accessibility.detailed_report com exceções axe-core (nós, HTML, failureSummary)'
+            }
           }
         },
         ReportRequest: {

@@ -6,7 +6,13 @@ const {
 } = require('../utils/accessibilityScore');
 const { checkStaticHeuristics } = require('../utils/urlHeuristics');
 const { extractSiteHost } = require('../utils/urlNormalize');
+const { formatDetailedViolations } = require('../utils/axeViolations');
+const { parseDevMode } = require('../utils/devMode');
 
+/**
+ * Sanitiza o relatório enviado pelo cliente (extensão/navegador) para uso em produção
+ * e persistência — mesma estrutura resumida retornada pelo axe no servidor.
+ */
 const sanitizeClientReport = (report) => {
   if (!Array.isArray(report)) return [];
   return report.slice(0, 50).map((violation) => ({
@@ -18,11 +24,15 @@ const sanitizeClientReport = (report) => {
   }));
 };
 
-const buildAccessibilityPayload = (sanitizedReport, axeMeta) => {
+/**
+ * Constrói o payload de acessibilidade exposto na resposta da API.
+ * Em modo dev, inclui detailed_report com exceções completas do axe-core.
+ */
+const buildAccessibilityPayload = (sanitizedReport, axeMeta, devMode = false) => {
   const penaltyScore = computeAccessibilityScore(sanitizedReport);
   const qualityRating = computeQualityRating(penaltyScore);
 
-  return {
+  const payload = {
     report_received: sanitizedReport.length > 0,
     violations_count: sanitizedReport.length,
     sanitized_violations_stored: sanitizedReport.length,
@@ -31,8 +41,15 @@ const buildAccessibilityPayload = (sanitizedReport, axeMeta) => {
     axe_source: axeMeta.source,
     axe_error: axeMeta.error || null
   };
+
+  if (devMode && axeMeta.detailedViolations?.length > 0) {
+    payload.detailed_report = axeMeta.detailedViolations;
+  }
+
+  return payload;
 };
 
+/** Monta o JSON 200 da análise (segurança + acessibilidade + id persistido). */
 const buildResponse = ({
   analysisId,
   securityResult,
@@ -48,6 +65,10 @@ const buildResponse = ({
   cached: false
 });
 
+/**
+ * Verificação de segurança: cache local → Google Safe Browsing → heurísticas estáticas.
+ * Em falha da API externa, usa fallback heurístico sem interromper o fluxo.
+ */
 const runSecurityCheck = async (urlString) => {
   const cached = await historyRepository.findCachedSecurityByUrl(urlString);
 
@@ -111,12 +132,19 @@ const runSecurityCheck = async (urlString) => {
   return { result: securityResult, fromCache: false };
 };
 
-const resolveAccessibilityReport = async (urlString, clientReport) => {
-  const serverAudit = await axeService.auditUrl(urlString);
+/**
+ * Resolve o relatório de acessibilidade com prioridade para o servidor (axe-core/Puppeteer).
+ * Se a auditoria no servidor falhar sem violações, usa o fallback do cliente.
+ *
+ * @param {boolean} devMode - Quando true, preserva detailedViolations do axe para a resposta
+ */
+const resolveAccessibilityReport = async (urlString, clientReport, devMode = false) => {
+  const serverAudit = await axeService.auditUrl(urlString, { devMode });
 
   if (serverAudit.violations.length > 0 || !serverAudit.error) {
     return {
       violations: serverAudit.violations,
+      detailedViolations: serverAudit.detailedViolations,
       source: serverAudit.source,
       error: serverAudit.error
     };
@@ -124,31 +152,53 @@ const resolveAccessibilityReport = async (urlString, clientReport) => {
 
   const clientViolations = sanitizeClientReport(clientReport);
   if (clientViolations.length > 0) {
-    return {
+    const meta = {
       violations: clientViolations,
       source: 'client',
       error: serverAudit.error
     };
+
+    if (devMode && Array.isArray(clientReport)) {
+      meta.detailedViolations = formatDetailedViolations(clientReport);
+    }
+
+    return meta;
   }
 
   return {
     violations: [],
+    detailedViolations: devMode ? [] : undefined,
     source: serverAudit.source,
     error: serverAudit.error
   };
 };
 
-const verifyUrl = async (urlString, accessibilityReport, userId = null) => {
+/**
+ * Orquestra a verificação completa de uma URL: segurança (Google/heurísticas),
+ * acessibilidade (axe-core) e persistência no histórico.
+ *
+ * @param {boolean} [devMode=false] - Relatório de acessibilidade detalhado na resposta (não altera o que é salvo no banco)
+ */
+const verifyUrl = async (urlString, accessibilityReport, userId = null, devMode = false) => {
   const siteHost = extractSiteHost(urlString);
 
   const { result: securityResult, fromCache: securityFromCache } =
     await runSecurityCheck(urlString);
 
-  const axeMeta = await resolveAccessibilityReport(urlString, accessibilityReport);
-  const accessibility = buildAccessibilityPayload(axeMeta.violations, axeMeta);
+  const axeMeta = await resolveAccessibilityReport(
+    urlString,
+    accessibilityReport,
+    devMode
+  );
+  const accessibility = buildAccessibilityPayload(
+    axeMeta.violations,
+    axeMeta,
+    devMode
+  );
 
   let analysisId = null;
 
+  // Persiste a análise no banco de dados, incluindo os resultados de segurança e acessibilidade, e associando ao usuário se disponível
   try {
     const saved = await historyRepository.saveAnalysis({
       userId,
@@ -179,5 +229,6 @@ const verifyUrl = async (urlString, accessibilityReport, userId = null) => {
 module.exports = {
   verifyUrl,
   runSecurityCheck,
-  resolveAccessibilityReport
+  resolveAccessibilityReport,
+  buildAccessibilityPayload
 };

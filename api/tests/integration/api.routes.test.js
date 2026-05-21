@@ -35,6 +35,14 @@ describe('API routes (integration)', () => {
     assert.equal(res.status, 400);
   });
 
+  it('POST /urls/analyze rejeita dev_mode inválido', async () => {
+    const res = await request(app)
+      .post('/urls/analyze')
+      .send({ url: 'https://www.example.com', dev_mode: 'yes' });
+
+    assert.equal(res.status, 400);
+  });
+
   it('POST /urls/analyze aceita URL segura (heurística local)', async () => {
     const res = await request(app)
       .post('/urls/analyze')
