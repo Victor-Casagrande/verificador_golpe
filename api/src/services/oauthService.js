@@ -32,7 +32,7 @@ const verifyOAuthState = (state, expectedProvider) => {
     }
     return decoded;
   } catch {
-    throw new AppError('State OAuth inválido ou expirado.', 400);
+    throw new AppError('State OAuth inválido ou expirado. Por favor, tente autenticar novamente.', 400);
   }
 };
 
@@ -42,7 +42,7 @@ const buildAuthorizeUrl = (provider) => {
   }
 
   if (!isProviderConfigured(provider)) {
-    throw new AppError(`Provedor ${provider} não configurado no servidor.`, 503);
+    throw new AppError(`Provedor ${provider} não está configurado no servidor.`, 503);
   }
 
   const { clientId, callbackUrl } = getProviderEnv(provider);
@@ -79,13 +79,23 @@ const exchangeCodeForToken = async (provider, code) => {
 
   const headers = { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' };
 
-  const res = await fetch(config.tokenUrl, { method: 'POST', headers, body });
-
-  if (!res.ok) {
-    throw new AppError(`Falha ao trocar código OAuth (${provider}).`, 502);
+  let res;
+  try {
+    res = await fetch(config.tokenUrl, { method: 'POST', headers, body });
+  } catch (networkError) {
+    throw new AppError(`Falha de rede ao comunicar com o servidor do provedor ${provider}.`, 502);
   }
 
-  const data = await res.json();
+  if (!res.ok) {
+    throw new AppError(`Falha ao trocar código OAuth (${provider}). Servidor devolveu HTTP ${res.status}.`, 502);
+  }
+
+  let data;
+  try {
+    data = await res.json();
+  } catch (parseError) {
+    throw new AppError(`Resposta inválida do provedor ${provider}.`, 502);
+  }
 
   if (data.error) {
     throw new AppError(data.error_description || data.error, 502);
@@ -106,34 +116,37 @@ const resolveOrCreateUser = async (provider, profile) => {
     };
   }
 
-  const existingByEmail = await userRepository.findByEmail(profile.email);
+  let user = await userRepository.findByEmail(profile.email);
 
-  if (existingByEmail) {
-    await oauthRepository.linkAccount(existingByEmail.id, provider, profile.providerUserId);
-    return {
-      id: existingByEmail.id,
-      name: existingByEmail.name,
-      email: existingByEmail.email,
-      created_at: existingByEmail.created_at
-    };
+  if (!user) {
+    try {
+      user = await userRepository.create({
+        name: profile.name,
+        email: profile.email,
+        passwordHash: null
+      });
+    } catch (error) {
+      if (error.code === '23505' || (error.message && error.message.includes('unique'))) {
+        user = await userRepository.findByEmail(profile.email);
+        if (!user) {
+          throw new AppError('Falha interna ao resolver contenção de dados do utilizador OAuth.', 500);
+        }
+      } else {
+        throw new AppError('Falha ao registar o novo utilizador no banco de dados.', 500);
+      }
+    }
   }
 
-  const newUser = await userRepository.create({
-    name: profile.name,
-    email: profile.email,
-    passwordHash: null
-  });
+  await oauthRepository.linkAccount(user.id, provider, profile.providerUserId);
 
-  await oauthRepository.linkAccount(newUser.id, provider, profile.providerUserId);
-
-  return newUser;
+  return user;
 };
 
 const handleCallback = async (provider, { code, state }) => {
   verifyOAuthState(state, provider);
 
   if (!code) {
-    throw new AppError('Código de autorização ausente.', 400);
+    throw new AppError('Código de autorização ausente na resposta do provedor.', 400);
   }
 
   const accessToken = await exchangeCodeForToken(provider, code);
