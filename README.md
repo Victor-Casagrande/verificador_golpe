@@ -173,6 +173,14 @@ Rotas públicas não exigem token. Rotas protegidas usam header:
 Authorization: Bearer <token_jwt>
 ```
 
+bearerAuth pode ser gerado localmente para testes através do script em `api/api/scripts/gerarJWT.js`
+
+```bash
+node gerarJWT.js
+```
+
+Resposta contém o JWT gerado para testes locais com Swagger, PostMan, curl e etc.
+
 ### `GET /api/status`
 
 Health check da API.
