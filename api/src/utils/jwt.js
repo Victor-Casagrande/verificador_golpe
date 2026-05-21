@@ -1,17 +1,17 @@
-const jwt = require('jsonwebtoken');
-const AppError = require('./AppError');
+const jwt = require("jsonwebtoken");
+const AppError = require("./AppError");
 
 const getSecret = () => {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
-    throw new AppError('JWT_SECRET não configurado no servidor.', 500);
+    throw new AppError("JWT_SECRET não configurado no servidor.", 500);
   }
   return secret;
 };
 
 const signToken = (payload) => {
   return jwt.sign(payload, getSecret(), {
-    expiresIn: process.env.JWT_EXPIRES_IN || '7d'
+    expiresIn: process.env.JWT_EXPIRES_IN || "7d",
   });
 };
 
@@ -21,5 +21,5 @@ const verifyToken = (token) => {
 
 module.exports = {
   signToken,
-  verifyToken
+  verifyToken,
 };

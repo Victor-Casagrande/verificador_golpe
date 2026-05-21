@@ -1,4 +1,4 @@
-const { URL } = require('url');
+const { URL } = require("url");
 
 const extractSiteHost = (urlString) => {
   try {
@@ -10,5 +10,5 @@ const extractSiteHost = (urlString) => {
 };
 
 module.exports = {
-  extractSiteHost
+  extractSiteHost,
 };

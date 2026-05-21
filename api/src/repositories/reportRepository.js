@@ -1,10 +1,10 @@
-const db = require('../config/database');
+const db = require("../config/database");
 
 const VALID_REPORT_TYPES = [
-  'false_positive',
-  'confirmed_scam',
-  'accessibility_issue',
-  'other'
+  "false_positive",
+  "confirmed_scam",
+  "accessibility_issue",
+  "other",
 ];
 
 const create = async ({ userId, urlAnalysisId, url, reportType, comment }) => {
@@ -12,13 +12,15 @@ const create = async ({ userId, urlAnalysisId, url, reportType, comment }) => {
     `INSERT INTO reports (user_id, url_analysis_id, url, report_type, comment)
      VALUES ($1, $2, $3, $4, $5)
      RETURNING id, user_id, url_analysis_id, url, report_type, comment, created_at`,
-    [userId, urlAnalysisId || null, url, reportType, comment || null]
+    [userId, urlAnalysisId || null, url, reportType, comment || null],
   );
   return result.rows[0];
 };
 
-/** Piores sites: menor quality_rating / maior penalty score. */
-const findWorstAccessibilitySites = async ({ limit = 10, minAnalyses = 1 } = {}) => {
+const findWorstAccessibilitySites = async ({
+  limit = 10,
+  minAnalyses = 1,
+} = {}) => {
   const result = await db.query(
     `SELECT
        site_host,
@@ -35,13 +37,15 @@ const findWorstAccessibilitySites = async ({ limit = 10, minAnalyses = 1 } = {})
      HAVING COUNT(*) >= $2
      ORDER BY avg_quality_rating ASC, avg_penalty_score DESC
      LIMIT $1`,
-    [limit, minAnalyses]
+    [limit, minAnalyses],
   );
   return result.rows;
 };
 
-/** Melhores sites: maior quality_rating. */
-const findBestAccessibilitySites = async ({ limit = 10, minAnalyses = 1 } = {}) => {
+const findBestAccessibilitySites = async ({
+  limit = 10,
+  minAnalyses = 1,
+} = {}) => {
   const result = await db.query(
     `SELECT
        site_host,
@@ -58,7 +62,7 @@ const findBestAccessibilitySites = async ({ limit = 10, minAnalyses = 1 } = {}) 
      HAVING COUNT(*) >= $2
      ORDER BY avg_quality_rating DESC, avg_penalty_score ASC
      LIMIT $1`,
-    [limit, minAnalyses]
+    [limit, minAnalyses],
   );
   return result.rows;
 };
@@ -75,7 +79,7 @@ const findReportStatsByUrl = async (limit = 10) => {
      GROUP BY url
      ORDER BY report_count DESC
      LIMIT $1`,
-    [limit]
+    [limit],
   );
   return result.rows;
 };
@@ -85,5 +89,5 @@ module.exports = {
   create,
   findWorstAccessibilitySites,
   findBestAccessibilitySites,
-  findReportStatsByUrl
+  findReportStatsByUrl,
 };

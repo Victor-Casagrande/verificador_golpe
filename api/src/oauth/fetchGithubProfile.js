@@ -1,10 +1,10 @@
 const fetchGithubProfile = async (accessToken) => {
-  const userRes = await fetch('https://api.github.com/user', {
+  const userRes = await fetch("https://api.github.com/user", {
     headers: {
       Authorization: `Bearer ${accessToken}`,
-      Accept: 'application/json',
-      'User-Agent': 'sentinela-apl'
-    }
+      Accept: "application/json",
+      "User-Agent": "sentinela-apl",
+    },
   });
 
   if (!userRes.ok) {
@@ -16,12 +16,12 @@ const fetchGithubProfile = async (accessToken) => {
   let email = user.email;
 
   if (!email) {
-    const emailsRes = await fetch('https://api.github.com/user/emails', {
+    const emailsRes = await fetch("https://api.github.com/user/emails", {
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        Accept: 'application/json',
-        'User-Agent': 'sentinela-apl'
-      }
+        Accept: "application/json",
+        "User-Agent": "sentinela-apl",
+      },
     });
 
     if (emailsRes.ok) {
@@ -33,13 +33,15 @@ const fetchGithubProfile = async (accessToken) => {
   }
 
   if (!email) {
-    throw new Error('GitHub não retornou e-mail verificado. Configure um e-mail público ou verificado na conta.');
+    throw new Error(
+      "GitHub não retornou e-mail verificado. Configure um e-mail público ou verificado na conta.",
+    );
   }
 
   return {
     providerUserId: String(user.id),
     email: email.toLowerCase(),
-    name: user.name || user.login || email.split('@')[0]
+    name: user.name || user.login || email.split("@")[0],
   };
 };
 

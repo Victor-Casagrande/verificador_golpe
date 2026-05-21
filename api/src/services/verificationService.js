@@ -1,18 +1,14 @@
-const historyRepository = require('../repositories/historyRepository');
-const axeService = require('./axeService');
+const historyRepository = require("../repositories/historyRepository");
+const axeService = require("./axeService");
 const {
   computeAccessibilityScore,
-  computeQualityRating
-} = require('../utils/accessibilityScore');
-const { checkStaticHeuristics } = require('../utils/urlHeuristics');
-const { extractSiteHost } = require('../utils/urlNormalize');
-const { formatDetailedViolations } = require('../utils/axeViolations');
-const { parseDevMode } = require('../utils/devMode');
+  computeQualityRating,
+} = require("../utils/accessibilityScore");
+const { checkStaticHeuristics } = require("../utils/urlHeuristics");
+const { extractSiteHost } = require("../utils/urlNormalize");
+const { formatDetailedViolations } = require("../utils/axeViolations");
+const { parseDevMode } = require("../utils/devMode");
 
-/**
- * Sanitiza o relatório enviado pelo cliente (extensão/navegador) para uso em produção
- * e persistência — mesma estrutura resumida retornada pelo axe no servidor.
- */
 const sanitizeClientReport = (report) => {
   if (!Array.isArray(report)) return [];
   return report.slice(0, 50).map((violation) => ({
@@ -20,15 +16,15 @@ const sanitizeClientReport = (report) => {
     impact: violation.impact,
     description: violation.description,
     helpUrl: violation.helpUrl,
-    nodes_count: Array.isArray(violation.nodes) ? violation.nodes.length : 0
+    nodes_count: Array.isArray(violation.nodes) ? violation.nodes.length : 0,
   }));
 };
 
-/**
- * Constrói o payload de acessibilidade exposto na resposta da API.
- * Em modo dev, inclui detailed_report com exceções completas do axe-core.
- */
-const buildAccessibilityPayload = (sanitizedReport, axeMeta, devMode = false) => {
+const buildAccessibilityPayload = (
+  sanitizedReport,
+  axeMeta,
+  devMode = false,
+) => {
   const penaltyScore = computeAccessibilityScore(sanitizedReport);
   const qualityRating = computeQualityRating(penaltyScore);
 
@@ -39,7 +35,7 @@ const buildAccessibilityPayload = (sanitizedReport, axeMeta, devMode = false) =>
     accessibility_score: penaltyScore,
     quality_rating: qualityRating,
     axe_source: axeMeta.source,
-    axe_error: axeMeta.error || null
+    axe_error: axeMeta.error || null,
   };
 
   if (devMode && axeMeta.detailedViolations?.length > 0) {
@@ -49,26 +45,21 @@ const buildAccessibilityPayload = (sanitizedReport, axeMeta, devMode = false) =>
   return payload;
 };
 
-/** Monta o JSON 200 da análise (segurança + acessibilidade + id persistido). */
 const buildResponse = ({
   analysisId,
   securityResult,
   accessibility,
-  securityFromCache
+  securityFromCache,
 }) => ({
   analysis_id: analysisId,
   security: {
     ...securityResult,
-    from_cache: securityFromCache
+    from_cache: securityFromCache,
   },
   accessibility,
-  cached: false
+  cached: false,
 });
 
-/**
- * Verificação de segurança: cache local → Google Safe Browsing → heurísticas estáticas.
- * Em falha da API externa, usa fallback heurístico sem interromper o fluxo.
- */
 const runSecurityCheck = async (urlString) => {
   const cached = await historyRepository.findCachedSecurityByUrl(urlString);
 
@@ -77,9 +68,9 @@ const runSecurityCheck = async (urlString) => {
       result: {
         is_danger: cached.is_danger,
         status: cached.status,
-        reason: cached.reason
+        reason: cached.reason,
       },
-      fromCache: true
+      fromCache: true,
     };
   }
 
@@ -88,23 +79,23 @@ const runSecurityCheck = async (urlString) => {
 
   try {
     if (!apiKey) {
-      throw new Error('Chave da API do Google ausente no .env.');
+      throw new Error("Chave da API do Google ausente no .env.");
     }
 
     const googleApiUrl = `https://safebrowsing.googleapis.com/v4/threatMatches:find?key=${apiKey}`;
 
     const response = await fetch(googleApiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        client: { clientId: 'ifc-videira-sentinela', clientVersion: '1.0.0' },
+        client: { clientId: "ifc-videira-sentinela", clientVersion: "1.0.0" },
         threatInfo: {
-          threatTypes: ['MALWARE', 'SOCIAL_ENGINEERING', 'UNWANTED_SOFTWARE'],
-          platformTypes: ['ANY_PLATFORM'],
-          threatEntryTypes: ['URL'],
-          threatEntries: [{ url: urlString }]
-        }
-      })
+          threatTypes: ["MALWARE", "SOCIAL_ENGINEERING", "UNWANTED_SOFTWARE"],
+          platformTypes: ["ANY_PLATFORM"],
+          threatEntryTypes: ["URL"],
+          threatEntries: [{ url: urlString }],
+        },
+      }),
     });
 
     if (!response.ok) {
@@ -116,15 +107,16 @@ const runSecurityCheck = async (urlString) => {
     if (data.matches?.length > 0) {
       securityResult = {
         is_danger: true,
-        status: 'GOLPE CONFIRMADO',
-        reason: 'URL identificada como maliciosa no banco de dados oficial do Google Safe Browsing.'
+        status: "GOLPE CONFIRMADO",
+        reason:
+          "URL identificada como maliciosa no banco de dados oficial do Google Safe Browsing.",
       };
     } else {
       securityResult = checkStaticHeuristics(urlString);
     }
   } catch (externalApiError) {
     console.warn(
-      `[SENTRY-WARNING] Falha na verificação externa. Fallback local: ${externalApiError.message}`
+      `[SENTRY-WARNING] Falha na verificação externa. Fallback local: ${externalApiError.message}`,
     );
     securityResult = checkStaticHeuristics(urlString);
   }
@@ -138,7 +130,11 @@ const runSecurityCheck = async (urlString) => {
  *
  * @param {boolean} devMode - Quando true, preserva detailedViolations do axe para a resposta
  */
-const resolveAccessibilityReport = async (urlString, clientReport, devMode = false) => {
+const resolveAccessibilityReport = async (
+  urlString,
+  clientReport,
+  devMode = false,
+) => {
   const serverAudit = await axeService.auditUrl(urlString, { devMode });
 
   if (serverAudit.violations.length > 0 || !serverAudit.error) {
@@ -146,7 +142,7 @@ const resolveAccessibilityReport = async (urlString, clientReport, devMode = fal
       violations: serverAudit.violations,
       detailedViolations: serverAudit.detailedViolations,
       source: serverAudit.source,
-      error: serverAudit.error
+      error: serverAudit.error,
     };
   }
 
@@ -154,8 +150,8 @@ const resolveAccessibilityReport = async (urlString, clientReport, devMode = fal
   if (clientViolations.length > 0) {
     const meta = {
       violations: clientViolations,
-      source: 'client',
-      error: serverAudit.error
+      source: "client",
+      error: serverAudit.error,
     };
 
     if (devMode && Array.isArray(clientReport)) {
@@ -169,7 +165,7 @@ const resolveAccessibilityReport = async (urlString, clientReport, devMode = fal
     violations: [],
     detailedViolations: devMode ? [] : undefined,
     source: serverAudit.source,
-    error: serverAudit.error
+    error: serverAudit.error,
   };
 };
 
@@ -179,7 +175,12 @@ const resolveAccessibilityReport = async (urlString, clientReport, devMode = fal
  *
  * @param {boolean} [devMode=false] - Relatório de acessibilidade detalhado na resposta (não altera o que é salvo no banco)
  */
-const verifyUrl = async (urlString, accessibilityReport, userId = null, devMode = false) => {
+const verifyUrl = async (
+  urlString,
+  accessibilityReport,
+  userId = null,
+  devMode = false,
+) => {
   const siteHost = extractSiteHost(urlString);
 
   const { result: securityResult, fromCache: securityFromCache } =
@@ -188,17 +189,16 @@ const verifyUrl = async (urlString, accessibilityReport, userId = null, devMode 
   const axeMeta = await resolveAccessibilityReport(
     urlString,
     accessibilityReport,
-    devMode
+    devMode,
   );
   const accessibility = buildAccessibilityPayload(
     axeMeta.violations,
     axeMeta,
-    devMode
+    devMode,
   );
 
   let analysisId = null;
 
-  // Persiste a análise no banco de dados, incluindo os resultados de segurança e acessibilidade, e associando ao usuário se disponível
   try {
     const saved = await historyRepository.saveAnalysis({
       userId,
@@ -211,18 +211,18 @@ const verifyUrl = async (urlString, accessibilityReport, userId = null, devMode 
       accessibilityScore: accessibility.accessibility_score,
       qualityRating: accessibility.quality_rating,
       axeSource: accessibility.axe_source,
-      securityFromCache: securityFromCache
+      securityFromCache: securityFromCache,
     });
     analysisId = saved?.id ?? null;
   } catch (dbError) {
-    console.error('Falha ao persistir análise:', dbError);
+    console.error("Falha ao persistir análise:", dbError);
   }
 
   return buildResponse({
     analysisId,
     securityResult,
     accessibility,
-    securityFromCache
+    securityFromCache,
   });
 };
 
@@ -230,5 +230,5 @@ module.exports = {
   verifyUrl,
   runSecurityCheck,
   resolveAccessibilityReport,
-  buildAccessibilityPayload
+  buildAccessibilityPayload,
 };

@@ -1,4 +1,4 @@
-const db = require('../config/database');
+const db = require("../config/database");
 
 const getGlobalSecurityStats = async () => {
   const query = `
@@ -22,11 +22,17 @@ const getGlobalSecurityStats = async () => {
       total_threats: parseInt(row.total_threats || 0, 10),
       total_safe: parseInt(row.total_safe || 0, 10),
       threats_caught_by_google: parseInt(row.threats_caught_by_google || 0, 10),
-      threats_caught_by_heuristics: parseInt(row.threats_caught_by_heuristics || 0, 10),
-      total_cache_hits: parseInt(row.total_cache_hits || 0, 10)
+      threats_caught_by_heuristics: parseInt(
+        row.threats_caught_by_heuristics || 0,
+        10,
+      ),
+      total_cache_hits: parseInt(row.total_cache_hits || 0, 10),
     };
   } catch (error) {
-    console.error('[Analytics] Erro ao buscar estatísticas globais de segurança:', error);
+    console.error(
+      "[Analytics] Erro ao buscar estatísticas globais de segurança:",
+      error,
+    );
     throw error;
   }
 };
@@ -49,14 +55,17 @@ const getCommunityFeedbackStats = async () => {
 
   try {
     const result = await db.query(query);
-    return result.rows.map(row => ({
+    return result.rows.map((row) => ({
       report_type: row.report_type,
       total_reports: parseInt(row.total_reports || 0, 10),
       related_to_heuristics: parseInt(row.related_to_heuristics || 0, 10),
-      related_to_google: parseInt(row.related_to_google || 0, 10)
+      related_to_google: parseInt(row.related_to_google || 0, 10),
     }));
   } catch (error) {
-    console.error('[Analytics] Erro ao buscar estatísticas de feedback da comunidade:', error);
+    console.error(
+      "[Analytics] Erro ao buscar estatísticas de feedback da comunidade:",
+      error,
+    );
     throw error;
   }
 };
@@ -81,13 +90,16 @@ const getMostDangerousHosts = async (limit = 10) => {
 
   try {
     const result = await db.query(query, [limit]);
-    return result.rows.map(row => ({
+    return result.rows.map((row) => ({
       site_host: row.site_host,
       threat_count: parseInt(row.threat_count || 0, 10),
-      last_threat_seen: row.last_threat_seen
+      last_threat_seen: row.last_threat_seen,
     }));
   } catch (error) {
-    console.error('[Analytics] Erro ao buscar ranking de hosts perigosos:', error);
+    console.error(
+      "[Analytics] Erro ao buscar ranking de hosts perigosos:",
+      error,
+    );
     throw error;
   }
 };
@@ -95,5 +107,5 @@ const getMostDangerousHosts = async (limit = 10) => {
 module.exports = {
   getGlobalSecurityStats,
   getCommunityFeedbackStats,
-  getMostDangerousHosts
+  getMostDangerousHosts,
 };

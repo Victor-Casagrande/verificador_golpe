@@ -1,4 +1,4 @@
-const db = require('../config/database');
+const db = require("../config/database");
 
 const findByProvider = async (provider, providerUserId) => {
   const result = await db.query(
@@ -7,7 +7,7 @@ const findByProvider = async (provider, providerUserId) => {
      FROM oauth_accounts oa
      INNER JOIN users u ON u.id = oa.user_id
      WHERE oa.provider = $1 AND oa.provider_user_id = $2`,
-    [provider, String(providerUserId)]
+    [provider, String(providerUserId)],
   );
   return result.rows[0] || null;
 };
@@ -18,15 +18,15 @@ const linkAccount = async (userId, provider, providerUserId) => {
      VALUES ($1, $2, $3)
      ON CONFLICT (provider, provider_user_id) DO NOTHING
      RETURNING id, user_id, provider, provider_user_id, created_at`,
-    [userId, provider, String(providerUserId)]
+    [userId, provider, String(providerUserId)],
   );
   return result.rows[0] || null;
 };
 
 const findProvidersByUserId = async (userId) => {
   const result = await db.query(
-    'SELECT provider, provider_user_id, created_at FROM oauth_accounts WHERE user_id = $1',
-    [userId]
+    "SELECT provider, provider_user_id, created_at FROM oauth_accounts WHERE user_id = $1",
+    [userId],
   );
   return result.rows;
 };
@@ -34,5 +34,5 @@ const findProvidersByUserId = async (userId) => {
 module.exports = {
   findByProvider,
   linkAccount,
-  findProvidersByUserId
+  findProvidersByUserId,
 };

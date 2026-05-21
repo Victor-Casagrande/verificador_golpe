@@ -42,13 +42,13 @@ verificador_golpe/
 
 ## Pré-requisitos
 
-| Ferramenta | Versão sugerida | Obrigatório para |
-|------------|-----------------|------------------|
-| [Docker](https://www.docker.com/) + Docker Compose | Atual | Setup recomendado (API + banco) |
-| [Node.js](https://nodejs.org/) | 18+ | Desenvolvimento local sem Docker |
-| [PostgreSQL](https://www.postgresql.org/) | 14+ | Desenvolvimento local sem Docker |
-| [Google Chrome](https://www.google.com/chrome/) | Atual | Extensão |
-| Conta Google Cloud | — | Safe Browsing API |
+| Ferramenta                                         | Versão sugerida | Obrigatório para                 |
+| -------------------------------------------------- | --------------- | -------------------------------- |
+| [Docker](https://www.docker.com/) + Docker Compose | Atual           | Setup recomendado (API + banco)  |
+| [Node.js](https://nodejs.org/)                     | 18+             | Desenvolvimento local sem Docker |
+| [PostgreSQL](https://www.postgresql.org/)          | 14+             | Desenvolvimento local sem Docker |
+| [Google Chrome](https://www.google.com/chrome/)    | Atual           | Extensão                         |
+| Conta Google Cloud                                 | —               | Safe Browsing API                |
 
 ## Início rápido com Docker (recomendado)
 
@@ -94,19 +94,19 @@ curl http://localhost:3000/api/status
 
 ### Comandos úteis
 
-| Comando | Descrição |
-|---------|-----------|
-| `docker compose logs -f api` | Logs da API |
-| `docker compose logs -f db` | Logs do PostgreSQL |
-| `docker compose down` | Para os containers |
-| `docker compose down -v` | Para os containers e **apaga o volume do banco** |
+| Comando                      | Descrição                                        |
+| ---------------------------- | ------------------------------------------------ |
+| `docker compose logs -f api` | Logs da API                                      |
+| `docker compose logs -f db`  | Logs do PostgreSQL                               |
+| `docker compose down`        | Para os containers                               |
+| `docker compose down -v`     | Para os containers e **apaga o volume do banco** |
 
 ### Serviços
 
-| Serviço | Container | Porta | Descrição |
-|---------|-----------|-------|-----------|
-| `api` | `sentinela-api` | 3000 | Backend Node.js |
-| `db` | `sentinela-db` | 5432 | PostgreSQL 16 |
+| Serviço | Container       | Porta | Descrição       |
+| ------- | --------------- | ----- | --------------- |
+| `api`   | `sentinela-api` | 3000  | Backend Node.js |
+| `db`    | `sentinela-db`  | 5432  | PostgreSQL 16   |
 
 Os schemas são criados automaticamente via `db/init/` na primeira inicialização do banco. Se o volume do Postgres já existia antes de novas migrations, execute `docker compose down -v` ou rode manualmente os scripts em `db/init/`.
 
@@ -224,11 +224,11 @@ Resposta (registro e login):
 
 O **e-mail é a chave da conta**: login via GitHub ou Google com o mesmo e-mail unifica o acesso à mesma conta (e ao histórico).
 
-| Rota | Descrição |
-|------|-----------|
-| `GET /auth/oauth/providers` | Lista provedores configurados |
-| `GET /auth/oauth/github` | Inicia login GitHub |
-| `GET /auth/oauth/google` | Inicia login Google |
+| Rota                                  | Descrição                       |
+| ------------------------------------- | ------------------------------- |
+| `GET /auth/oauth/providers`           | Lista provedores configurados   |
+| `GET /auth/oauth/github`              | Inicia login GitHub             |
+| `GET /auth/oauth/google`              | Inicia login Google             |
 | `GET /auth/oauth/{provider}/callback` | Callback — retorna JSON com JWT |
 
 Configure no `.env`: `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GITHUB_CALLBACK_URL` e equivalentes `GOOGLE_*`.
@@ -254,11 +254,11 @@ Cada chamada grava uma **nova análise** (o mesmo site em datas diferentes pode 
 }
 ```
 
-| Campo | Tipo | Obrigatório | Descrição |
-|-------|------|-------------|-----------|
-| `url` | string | Sim | URL da página (http ou https) |
-| `accessibility_report` | array | Não | Fallback se o axe no servidor falhar |
-| `dev_mode` | boolean | Não | Quando `true`, inclui `accessibility.detailed_report` com exceções axe-core detalhadas |
+| Campo                  | Tipo    | Obrigatório | Descrição                                                                              |
+| ---------------------- | ------- | ----------- | -------------------------------------------------------------------------------------- |
+| `url`                  | string  | Sim         | URL da página (http ou https)                                                          |
+| `accessibility_report` | array   | Não         | Fallback se o axe no servidor falhar                                                   |
+| `dev_mode`             | boolean | Não         | Quando `true`, inclui `accessibility.detailed_report` com exceções axe-core detalhadas |
 
 **Resposta de sucesso (200):**
 
@@ -281,10 +281,10 @@ Cada chamada grava uma **nova análise** (o mesmo site em datas diferentes pode 
 }
 ```
 
-| Métrica | Significado |
-|---------|-------------|
-| `quality_rating` | 0–100 — **maior = melhor** acessibilidade |
-| `accessibility_score` | Penalidade — **maior = pior** |
+| Métrica               | Significado                               |
+| --------------------- | ----------------------------------------- |
+| `quality_rating`      | 0–100 — **maior = melhor** acessibilidade |
+| `accessibility_score` | Penalidade — **maior = pior**             |
 
 ### `GET /users/history` (autenticado)
 
@@ -309,12 +309,12 @@ Envia feedback sobre uma URL ou análise.
 }
 ```
 
-| `report_type` | Descrição |
-|---------------|-----------|
-| `false_positive` | Alerta incorreto |
-| `confirmed_scam` | Golpe confirmado pelo usuário |
-| `accessibility_issue` | Problema de acessibilidade |
-| `other` | Outros |
+| `report_type`         | Descrição                     |
+| --------------------- | ----------------------------- |
+| `false_positive`      | Alerta incorreto              |
+| `confirmed_scam`      | Golpe confirmado pelo usuário |
+| `accessibility_issue` | Problema de acessibilidade    |
+| `other`               | Outros                        |
 
 ### Rankings
 
@@ -332,12 +332,12 @@ Sites com **mais denúncias** dos usuários. Público.
 
 **Possíveis status de segurança:**
 
-| Status | Significado |
-|--------|-------------|
-| `GOLPE CONFIRMADO` | URL na lista negra do Google Safe Browsing |
-| `Aparência Suspeita (Heurística)` | Padrões estruturais suspeitos na URL |
-| `Erro de Formato` | URL inválida ou ilegível |
-| `Seguro` | Nenhuma ameaça detectada nos motores ativos |
+| Status                            | Significado                                 |
+| --------------------------------- | ------------------------------------------- |
+| `GOLPE CONFIRMADO`                | URL na lista negra do Google Safe Browsing  |
+| `Aparência Suspeita (Heurística)` | Padrões estruturais suspeitos na URL        |
+| `Erro de Formato`                 | URL inválida ou ilegível                    |
+| `Seguro`                          | Nenhuma ameaça detectada nos motores ativos |
 
 ### Heurísticas locais (segunda camada)
 
@@ -349,24 +349,24 @@ Aplicadas quando o Google Safe Browsing não encontra ameaças:
 
 ## Extensão
 
-| Recurso | Descrição |
-|---------|-----------|
-| Detecção de golpes | Overlay vermelho com opções **Sair** e **Ignorar aviso** |
-| Acessibilidade | Nota gerada pela API (axe-core no servidor); exibida no console da extensão |
-| Permissões | `activeTab` e `<all_urls>` para content scripts |
+| Recurso            | Descrição                                                                   |
+| ------------------ | --------------------------------------------------------------------------- |
+| Detecção de golpes | Overlay vermelho com opções **Sair** e **Ignorar aviso**                    |
+| Acessibilidade     | Nota gerada pela API (axe-core no servidor); exibida no console da extensão |
+| Permissões         | `activeTab` e `<all_urls>` para content scripts                             |
 
 A extensão envia requisições para `http://localhost:3000/urls/analyze`. A API precisa estar em execução na mesma máquina.
 
 ## Scripts disponíveis
 
-| Comando | Pasta | Descrição |
-|---------|-------|-----------|
-| `npm start` | `api/` | Inicia o servidor (produção / Docker) |
-| `npm run dev` | `api/` | Inicia o servidor com nodemon |
-| `docker compose up --build` | raiz | Sobe API + PostgreSQL |
-| `npm test` | `api/` | Testes unitários + integração |
-| `npm run test:unit` | `api/` | Só testes unitários |
-| `npm run test:urls` | `api/` | Script contra API local (heurísticas/URLs) |
+| Comando                     | Pasta  | Descrição                                  |
+| --------------------------- | ------ | ------------------------------------------ |
+| `npm start`                 | `api/` | Inicia o servidor (produção / Docker)      |
+| `npm run dev`               | `api/` | Inicia o servidor com nodemon              |
+| `docker compose up --build` | raiz   | Sobe API + PostgreSQL                      |
+| `npm test`                  | `api/` | Testes unitários + integração              |
+| `npm run test:unit`         | `api/` | Só testes unitários                        |
+| `npm run test:urls`         | `api/` | Script contra API local (heurísticas/URLs) |
 
 ## Testes
 
@@ -386,6 +386,7 @@ npm run test:urls
 Fixtures em `api/tests/fixtures/test-urls.json` (URLs seguras, suspeitas e inválidas).
 
 ## Limitações conhecidas
+
 - **Histórico na UI:** a API expõe `GET /users/history`, mas a extensão ainda não exibe histórico ao usuário.
 - **Falha do banco:** se o PostgreSQL estiver indisponível, o alerta de segurança ainda é retornado; apenas a persistência falha silenciosamente.
 - **`extension/api_server.py`:** backend FastAPI legado, mantido no repositório mas **não utilizado** pelo `content.js` atual.

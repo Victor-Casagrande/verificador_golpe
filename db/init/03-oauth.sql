@@ -1,8 +1,6 @@
--- Contas OAuth podem não ter senha local
 ALTER TABLE users
     ALTER COLUMN password_hash DROP NOT NULL;
 
--- Vínculo provedor ↔ usuário (mesmo e-mail = mesma conta)
 CREATE TABLE IF NOT EXISTS oauth_accounts (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

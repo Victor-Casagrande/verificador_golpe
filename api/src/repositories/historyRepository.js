@@ -1,4 +1,4 @@
-const db = require('../config/database');
+const db = require("../config/database");
 
 const saveAnalysis = async ({
   userId,
@@ -10,8 +10,8 @@ const saveAnalysis = async ({
   accessibilityViolations,
   accessibilityScore,
   qualityRating,
-  axeSource = 'server',
-  securityFromCache = false
+  axeSource = "server",
+  securityFromCache = false,
 }) => {
   const result = await db.query(
     `INSERT INTO url_analyses (
@@ -33,8 +33,8 @@ const saveAnalysis = async ({
       accessibilityScore,
       qualityRating,
       axeSource,
-      securityFromCache
-    ]
+      securityFromCache,
+    ],
   );
   return result.rows[0];
 };
@@ -44,9 +44,12 @@ const saveAnonymousAnalysis = async (payload) => {
   return row?.id ?? null;
 };
 
-const findByUserId = async (userId, { limit = 20, offset = 0, urlFilter = null } = {}) => {
+const findByUserId = async (
+  userId,
+  { limit = 20, offset = 0, urlFilter = null } = {},
+) => {
   const params = [userId, limit, offset];
-  let urlClause = '';
+  let urlClause = "";
 
   if (urlFilter) {
     params.push(urlFilter);
@@ -61,14 +64,14 @@ const findByUserId = async (userId, { limit = 20, offset = 0, urlFilter = null }
      WHERE user_id = $1${urlClause}
      ORDER BY created_at DESC
      LIMIT $2 OFFSET $3`,
-    params
+    params,
   );
   return result.rows;
 };
 
 const countByUserId = async (userId, urlFilter = null) => {
   const params = [userId];
-  let urlClause = '';
+  let urlClause = "";
 
   if (urlFilter) {
     params.push(urlFilter);
@@ -77,12 +80,11 @@ const countByUserId = async (userId, urlFilter = null) => {
 
   const result = await db.query(
     `SELECT COUNT(*)::int AS total FROM url_analyses WHERE user_id = $1${urlClause}`,
-    params
+    params,
   );
   return result.rows[0].total;
 };
 
-/** Cache apenas da camada de segurança (24h). Acessibilidade é sempre reavaliada. */
 const findCachedSecurityByUrl = async (urlString) => {
   const result = await db.query(
     `SELECT is_danger, status, reason
@@ -90,12 +92,11 @@ const findCachedSecurityByUrl = async (urlString) => {
      WHERE url = $1 AND created_at >= NOW() - INTERVAL '24 hours'
      ORDER BY created_at DESC
      LIMIT 1`,
-    [urlString]
+    [urlString],
   );
   return result.rows[0] || null;
 };
 
-/** Histórico de notas do mesmo site/URL em datas diferentes. */
 const findUrlScoreTimeline = async (urlString, { limit = 30 } = {}) => {
   const result = await db.query(
     `SELECT id, url, site_host, accessibility_score, quality_rating, axe_source,
@@ -105,7 +106,7 @@ const findUrlScoreTimeline = async (urlString, { limit = 30 } = {}) => {
      WHERE url = $1
      ORDER BY created_at DESC
      LIMIT $2`,
-    [urlString, limit]
+    [urlString, limit],
   );
   return result.rows;
 };
@@ -119,7 +120,7 @@ const findSiteHostTimeline = async (siteHost, { limit = 30 } = {}) => {
      WHERE site_host = $1
      ORDER BY created_at DESC
      LIMIT $2`,
-    [siteHost.toLowerCase(), limit]
+    [siteHost.toLowerCase(), limit],
   );
   return result.rows;
 };
@@ -131,5 +132,5 @@ module.exports = {
   countByUserId,
   findCachedSecurityByUrl,
   findUrlScoreTimeline,
-  findSiteHostTimeline
+  findSiteHostTimeline,
 };

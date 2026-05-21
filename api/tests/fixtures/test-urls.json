@@ -9,10 +9,7 @@
     "https://loja-oficial-promocao-brasil.com",
     "https://oferta-especial.xyz"
   ],
-  "invalid": [
-    "not-a-url",
-    "ftp://arquivos.local/file"
-  ],
+  "invalid": ["not-a-url", "ftp://arquivos.local/file"],
   "sample_accessibility_violations": [
     {
       "id": "image-alt",

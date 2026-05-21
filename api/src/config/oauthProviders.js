@@ -1,18 +1,18 @@
-const SUPPORTED_PROVIDERS = ['github', 'google'];
+const SUPPORTED_PROVIDERS = ["github", "google"];
 
 const providerConfig = {
   github: {
-    name: 'GitHub',
-    authorizeUrl: 'https://github.com/login/oauth/authorize',
-    tokenUrl: 'https://github.com/login/oauth/access_token',
-    scopes: ['read:user', 'user:email']
+    name: "GitHub",
+    authorizeUrl: "https://github.com/login/oauth/authorize",
+    tokenUrl: "https://github.com/login/oauth/access_token",
+    scopes: ["read:user", "user:email"],
   },
   google: {
-    name: 'Google',
-    authorizeUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
-    tokenUrl: 'https://oauth2.googleapis.com/token',
-    scopes: ['openid', 'email', 'profile']
-  }
+    name: "Google",
+    authorizeUrl: "https://accounts.google.com/o/oauth2/v2/auth",
+    tokenUrl: "https://oauth2.googleapis.com/token",
+    scopes: ["openid", "email", "profile"],
+  },
 };
 
 const getProviderEnv = (provider) => {
@@ -20,7 +20,7 @@ const getProviderEnv = (provider) => {
   return {
     clientId: process.env[`${prefix}_CLIENT_ID`],
     clientSecret: process.env[`${prefix}_CLIENT_SECRET`],
-    callbackUrl: process.env[`${prefix}_CALLBACK_URL`]
+    callbackUrl: process.env[`${prefix}_CALLBACK_URL`],
   };
 };
 
@@ -33,7 +33,7 @@ const getConfiguredProviders = () =>
   SUPPORTED_PROVIDERS.filter(isProviderConfigured).map((id) => ({
     id,
     name: providerConfig[id].name,
-    authorize_path: `/auth/oauth/${id}`
+    authorize_path: `/auth/oauth/${id}`,
   }));
 
 module.exports = {
@@ -41,5 +41,5 @@ module.exports = {
   providerConfig,
   getProviderEnv,
   isProviderConfigured,
-  getConfiguredProviders
+  getConfiguredProviders,
 };

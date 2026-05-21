@@ -1,10 +1,6 @@
-/** Limites do relatório detalhado (modo dev) para evitar payloads excessivos. */
 const DEV_MAX_VIOLATIONS = 50;
 const DEV_MAX_NODES_PER_VIOLATION = 10;
 
-/**
- * Resumo sanitizado das violações axe-core (produção e persistência no banco).
- */
 const sanitizeViolations = (violations) => {
   if (!Array.isArray(violations)) return [];
 
@@ -17,10 +13,6 @@ const sanitizeViolations = (violations) => {
   }));
 };
 
-/**
- * Relatório detalhado para modo dev: exceções axe-core com nós afetados,
- * seletores, trechos HTML e resumos de falha.
- */
 const formatDetailedViolations = (violations) => {
   if (!Array.isArray(violations)) return [];
 

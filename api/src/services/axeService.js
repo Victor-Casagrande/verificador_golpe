@@ -1,9 +1,9 @@
-const puppeteer = require('puppeteer-core');
-const { AxePuppeteer } = require('@axe-core/puppeteer');
+const puppeteer = require("puppeteer-core");
+const { AxePuppeteer } = require("@axe-core/puppeteer");
 const {
   sanitizeViolations,
-  formatDetailedViolations
-} = require('../utils/axeViolations');
+  formatDetailedViolations,
+} = require("../utils/axeViolations");
 
 const AXE_TIMEOUT_MS = parseInt(process.env.AXE_TIMEOUT_MS, 10) || 45000;
 
@@ -15,19 +15,19 @@ const MAX_PAGES_PER_BROWSER = 50;
 const IDLE_TIMEOUT_MS = 10 * 60 * 1000;
 
 const isAxeEnabled = () =>
-  process.env.NODE_ENV !== 'test' && process.env.AXE_ENABLED !== 'false';
+  process.env.NODE_ENV !== "test" && process.env.AXE_ENABLED !== "false";
 
 const getExecutablePath = () => {
   if (process.env.PUPPETEER_EXECUTABLE_PATH) {
     return process.env.PUPPETEER_EXECUTABLE_PATH;
   }
-  if (process.platform === 'win32') {
-    return 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+  if (process.platform === "win32") {
+    return "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
   }
-  if (process.platform === 'darwin') {
-    return '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+  if (process.platform === "darwin") {
+    return "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
   }
-  return '/usr/bin/chromium';
+  return "/usr/bin/chromium";
 };
 
 const closeBrowser = async () => {
@@ -45,14 +45,18 @@ const closeBrowser = async () => {
 const resetIdleTimeout = () => {
   if (idleTimeoutId) clearTimeout(idleTimeoutId);
   idleTimeoutId = setTimeout(async () => {
-    console.log('[SENTRY-AXE] Encerrando o navegador Chromium por inatividade (Libertação de RAM).');
+    console.log(
+      "[SENTRY-AXE] Encerrando o navegador Chromium por inatividade (Libertação de RAM).",
+    );
     await closeBrowser();
   }, IDLE_TIMEOUT_MS);
 };
 
 const getBrowser = async () => {
   if (pagesProcessed >= MAX_PAGES_PER_BROWSER) {
-    console.log(`[SENTRY-AXE] Limite de ${MAX_PAGES_PER_BROWSER} análises atingido. A reciclar a instância do Chromium...`);
+    console.log(
+      `[SENTRY-AXE] Limite de ${MAX_PAGES_PER_BROWSER} análises atingido. A reciclar a instância do Chromium...`,
+    );
     await closeBrowser();
   }
 
@@ -61,15 +65,15 @@ const getBrowser = async () => {
       headless: true,
       executablePath: getExecutablePath(),
       args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--disable-gpu',
-        '--no-first-run',
-        '--no-zygote',
-        '--disable-extensions'
-      ]
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-accelerated-2d-canvas",
+        "--disable-gpu",
+        "--no-first-run",
+        "--no-zygote",
+        "--disable-extensions",
+      ],
     });
     pagesProcessed = 0;
   }
@@ -89,8 +93,8 @@ const auditUrl = async (urlString, options = {}) => {
   if (!isAxeEnabled()) {
     return {
       violations: [],
-      source: 'skipped',
-      error: 'Auditoria axe desabilitada neste ambiente.'
+      source: "skipped",
+      error: "Auditoria axe desabilitada neste ambiente.",
     };
   }
 
@@ -105,16 +109,16 @@ const auditUrl = async (urlString, options = {}) => {
     page = await context.newPage();
 
     await page.setRequestInterception(true);
-    page.on('request', (req) => {
+    page.on("request", (req) => {
       const resourceType = req.resourceType();
-      if (['image', 'stylesheet', 'font', 'media'].includes(resourceType)) {
+      if (["image", "stylesheet", "font", "media"].includes(resourceType)) {
         req.abort().catch(() => {});
       } else {
         req.continue().catch(() => {});
       }
     });
 
-    page.on('dialog', async dialog => {
+    page.on("dialog", async (dialog) => {
       await dialog.dismiss().catch(() => {});
     });
 
@@ -123,8 +127,8 @@ const auditUrl = async (urlString, options = {}) => {
     page.setDefaultTimeout(AXE_TIMEOUT_MS);
 
     await page.goto(urlString, {
-      waitUntil: 'domcontentloaded',
-      timeout: AXE_TIMEOUT_MS
+      waitUntil: "domcontentloaded",
+      timeout: AXE_TIMEOUT_MS,
     });
 
     const results = await new AxePuppeteer(page).analyze();
@@ -133,8 +137,8 @@ const auditUrl = async (urlString, options = {}) => {
 
     const payload = {
       violations,
-      source: 'server',
-      error: null
+      source: "server",
+      error: null,
     };
 
     if (devMode) {
@@ -146,8 +150,8 @@ const auditUrl = async (urlString, options = {}) => {
     console.warn(`[SENTRY-AXE] Falha ao auditar ${urlString}:`, error.message);
     return {
       violations: [],
-      source: 'server',
-      error: error.message
+      source: "server",
+      error: error.message,
     };
   } finally {
     if (context) {
@@ -158,13 +162,13 @@ const auditUrl = async (urlString, options = {}) => {
   }
 };
 
-process.on('SIGTERM', async () => await closeBrowser());
-process.on('SIGINT', async () => await closeBrowser());
+process.on("SIGTERM", async () => await closeBrowser());
+process.on("SIGINT", async () => await closeBrowser());
 
 module.exports = {
   auditUrl,
   closeBrowser,
   isAxeEnabled,
   sanitizeViolations,
-  formatDetailedViolations
+  formatDetailedViolations,
 };

@@ -1,4 +1,3 @@
--- Usuários
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     name VARCHAR(150) NOT NULL,
@@ -9,7 +8,6 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE INDEX IF NOT EXISTS idx_users_email ON users (email);
 
--- Vínculo de análises com usuário e pontuação de acessibilidade (maior = pior)
 ALTER TABLE url_analyses
     ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
 
@@ -19,7 +17,6 @@ ALTER TABLE url_analyses
 CREATE INDEX IF NOT EXISTS idx_url_analyses_user_id ON url_analyses (user_id);
 CREATE INDEX IF NOT EXISTS idx_url_analyses_accessibility_score ON url_analyses (accessibility_score DESC);
 
--- Denúncias / feedback dos usuários
 CREATE TABLE IF NOT EXISTS reports (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

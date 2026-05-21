@@ -1,5 +1,5 @@
-const verificationService = require('../services/verificationService');
-const { parseDevMode } = require('../utils/devMode');
+const verificationService = require("../services/verificationService");
+const { parseDevMode } = require("../utils/devMode");
 
 /**
  * POST /urls/analyze
@@ -18,7 +18,7 @@ const verifyUrl = async (req, res, next) => {
       url,
       accessibility_report,
       userId,
-      devMode
+      devMode,
     );
 
     return res.status(200).json(analysisResult);
@@ -28,5 +28,5 @@ const verifyUrl = async (req, res, next) => {
 };
 
 module.exports = {
-  verifyUrl
+  verifyUrl,
 };

@@ -1,4 +1,4 @@
-const db = require('../config/database');
+const db = require("../config/database");
 
 const getGlobalAccessibilityStats = async () => {
   const query = `
@@ -19,7 +19,7 @@ const getGlobalAccessibilityStats = async () => {
   try {
     const result = await db.query(query);
     const row = result.rows[0];
-    
+
     return {
       total_audits: parseInt(row.total_audits || 0, 10),
       avg_quality_rating: parseFloat(row.avg_quality_rating || 100),
@@ -27,11 +27,14 @@ const getGlobalAccessibilityStats = async () => {
       execution_sources: {
         server: parseInt(row.server_audits || 0, 10),
         client: parseInt(row.client_audits || 0, 10),
-        skipped: parseInt(row.skipped_audits || 0, 10)
-      }
+        skipped: parseInt(row.skipped_audits || 0, 10),
+      },
     };
   } catch (error) {
-    console.error('[Analytics] Erro ao buscar estatísticas globais de acessibilidade:', error);
+    console.error(
+      "[Analytics] Erro ao buscar estatísticas globais de acessibilidade:",
+      error,
+    );
     throw error;
   }
 };
@@ -59,20 +62,23 @@ const getWorstAccessibilityHosts = async (limit = 10) => {
 
   try {
     const result = await db.query(query, [limit]);
-    
-    return result.rows.map(row => ({
+
+    return result.rows.map((row) => ({
       site_host: row.site_host,
       pages_audited: parseInt(row.pages_audited || 0, 10),
       avg_quality_rating: parseFloat(row.avg_quality_rating || 0),
-      avg_penalty_score: parseFloat(row.avg_penalty_score || 0)
+      avg_penalty_score: parseFloat(row.avg_penalty_score || 0),
     }));
   } catch (error) {
-    console.error('[Analytics] Erro ao buscar ranking de hosts com pior acessibilidade:', error);
+    console.error(
+      "[Analytics] Erro ao buscar ranking de hosts com pior acessibilidade:",
+      error,
+    );
     throw error;
   }
 };
 
 module.exports = {
   getGlobalAccessibilityStats,
-  getWorstAccessibilityHosts
+  getWorstAccessibilityHosts,
 };

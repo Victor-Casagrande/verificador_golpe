@@ -1,4 +1,3 @@
--- Metadados para histórico temporal e rankings por site
 ALTER TABLE url_analyses
     ADD COLUMN IF NOT EXISTS site_host VARCHAR(255);
 

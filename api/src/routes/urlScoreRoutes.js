@@ -1,7 +1,7 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const historyController = require('../controllers/historyController');
+const historyController = require("../controllers/historyController");
 
-router.get('/history', historyController.getUrlScoreTimeline);
+router.get("/history", historyController.getUrlScoreTimeline);
 
 module.exports = router;

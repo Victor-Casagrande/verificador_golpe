@@ -18,7 +18,6 @@ const accessibilityAnalyticsRoutes = require('./routes/accessibilityAnalyticsRou
 
 const app = express();
 
-// Middlewares globais
 app.use(
   helmet({
     contentSecurityPolicy: {
@@ -36,7 +35,6 @@ app.use(express.json({ limit: '5mb'}));
 app.use(express.urlencoded({ extended: true, limit: '1mb' })); 
 app.use(rateLimitMiddleware);
 
-// Documentação OpenAPI (Swagger UI)
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, { explorer: true }));
 app.get('/api/docs.json', (req, res) => res.json(swaggerSpec));
 
@@ -45,7 +43,6 @@ app.use('/api/analytics/security', securityAnalyticsRoutes);
 app.use('/api/analytics/security', securityAnalyticsRoutes);
 app.use('/api/analytics/accessibility', accessibilityAnalyticsRoutes);
 
-// Rotas
 app.use('/auth', authRoutes);
 app.use('/users/history', historyRoutes);
 app.use('/reports', reportRoutes);
@@ -53,7 +50,6 @@ app.use('/rankings', rankingRoutes);
 app.use('/urls/scores', urlScoreRoutes);
 app.use('/urls/analyze', verificationRoutes);
 
-// Rota básica de Health Check para testar a comunicação
 app.get('/api/status', (req, res) => {
   res.status(200).json({
     sucesso: true,
@@ -62,7 +58,6 @@ app.get('/api/status', (req, res) => {
   });
 });
 
-// Rota raiz com HATEOAS
 app.get('/', (req, res) => {
   const baseUrl = `${req.protocol}://${req.get('host')}`;
 
@@ -111,7 +106,6 @@ app.get('/', (req, res) => {
   });
 });
 
-// Error handler
 app.use(errorHandlerMiddleware);
 
 module.exports = app;

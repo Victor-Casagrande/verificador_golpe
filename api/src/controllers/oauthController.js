@@ -1,10 +1,10 @@
-const oauthService = require('../services/oauthService');
-const AppError = require('../utils/AppError');
+const oauthService = require("../services/oauthService");
+const AppError = require("../utils/AppError");
 
 const listProviders = (req, res) => {
   return res.status(200).json({
     sucesso: true,
-    providers: oauthService.getConfiguredProviders()
+    providers: oauthService.getConfiguredProviders(),
   });
 };
 
@@ -25,20 +25,23 @@ const handleCallback = async (req, res, next) => {
       const errorMessage = req.query.error_description || req.query.error;
       if (redirectUrl) {
         const url = new URL(redirectUrl);
-        url.searchParams.set('error', errorMessage);
+        url.searchParams.set("error", errorMessage);
         return res.redirect(url.toString());
       }
-      throw new AppError(`Autorização OAuth recusada pelo utilizador ou pelo provedor: ${errorMessage}`, 403);
+      throw new AppError(
+        `Autorização OAuth recusada pelo utilizador ou pelo provedor: ${errorMessage}`,
+        403,
+      );
     }
 
     const result = await oauthService.handleCallback(req.params.provider, {
       code: req.query.code,
-      state: req.query.state
+      state: req.query.state,
     });
 
     if (redirectUrl) {
       const url = new URL(redirectUrl);
-      url.searchParams.set('token', result.token);
+      url.searchParams.set("token", result.token);
       return res.redirect(url.toString());
     }
 
@@ -51,5 +54,5 @@ const handleCallback = async (req, res, next) => {
 module.exports = {
   listProviders,
   redirectToProvider,
-  handleCallback
+  handleCallback,
 };
