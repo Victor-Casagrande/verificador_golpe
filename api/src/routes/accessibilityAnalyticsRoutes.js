@@ -3,7 +3,7 @@ const router = express.Router();
 const accessibilityAnalyticsController = require("../controllers/accessibilityAnalyticsController");
 const authMiddleware = require("../middlewares/authMiddleware");
 
-router.use(authMiddleware);
+router.use(authMiddleware.authenticate);
 
 /**
  * @route GET /api/analytics/accessibility/global

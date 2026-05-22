@@ -3,7 +3,7 @@ const router = express.Router();
 const securityAnalyticsController = require("../controllers/securityAnalyticsController");
 const authMiddleware = require("../middlewares/authMiddleware");
 
-router.use(authMiddleware);
+router.use(authMiddleware.authenticate);
 
 /**
  * @route GET /api/analytics/security/global
