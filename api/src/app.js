@@ -14,6 +14,7 @@ const errorHandlerMiddleware = require('./middlewares/errorHandlerMiddleware');
 const rateLimitMiddleware = require('./middlewares/rateLimitMiddleware');
 const securityAnalyticsRoutes = require('./routes/securityAnalyticsRoutes');
 const accessibilityAnalyticsRoutes = require('./routes/accessibilityAnalyticsRoutes');
+const db = require('./config/database');
 
 const app = express();
 
@@ -48,11 +49,27 @@ app.use('/rankings', rankingRoutes);
 app.use('/urls/scores', urlScoreRoutes);
 app.use('/urls/analyze', verificationRoutes);
 
-app.get('/api/status', (req, res) => {
+/**
+ * Health check.
+ *
+ * Sempre retorna 200 enquanto a API estiver respondendo — mesmo com o banco
+ * fora do ar — porque o fluxo principal (verificação de segurança +
+ * acessibilidade) continua funcionando sem persistência. O estado do banco
+ * vai no payload (`dependencies.database`) para que dashboards e clientes
+ * (a extensão, por exemplo) consigam diagnosticar a degradação.
+ */
+app.get('/api/status', async (req, res) => {
+  const dbHealth = await db.ping();
+
   res.status(200).json({
     sucesso: true,
-    mensagem: 'API do SentryVZN operando normalmente.',
-    timestamp: new Date().toISOString()
+    mensagem: dbHealth.ok
+      ? 'API do SentryVZN operando normalmente.'
+      : 'API operacional, mas o banco de dados está indisponível. Análises continuam funcionando sem persistência.',
+    timestamp: new Date().toISOString(),
+    dependencies: {
+      database: dbHealth
+    }
   });
 });
 

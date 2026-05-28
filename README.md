@@ -24,6 +24,8 @@ flowchart LR
     DB --> ANL[Endpoints /api/analytics/*]
 ```
 
+> A API é resiliente a falhas do PostgreSQL: o alerta de segurança e a nota de acessibilidade continuam sendo devolvidos para a extensão mesmo com o banco fora do ar — apenas o histórico/persistência é marcado como indisponível na resposta (`persistence.persisted: false`) e o estado é refletido em `GET /api/status`.
+
 ## Estrutura do repositório
 
 ```
@@ -223,7 +225,20 @@ O token é impresso no terminal e pode ser usado em Swagger UI, Postman, curl, e
 
 ### `GET /api/status`
 
-Health check da API. Público.
+Health check da API. Público. Sempre devolve `200` enquanto o processo Node estiver respondendo — mesmo com o PostgreSQL fora do ar — porque o fluxo principal de verificação continua funcionando sem persistência. A saúde das dependências aparece no payload:
+
+```json
+{
+  "sucesso": true,
+  "mensagem": "API do SentryVZN operando normalmente.",
+  "timestamp": "2026-05-28T11:55:00.000Z",
+  "dependencies": {
+    "database": { "ok": true, "latency_ms": 4 }
+  }
+}
+```
+
+Quando o banco está indisponível, `dependencies.database.ok` vira `false` e a mensagem indica modo degradado.
 
 ### Documentação interativa (Swagger)
 
@@ -325,9 +340,15 @@ Cada chamada grava uma **nova análise** (o mesmo site em datas diferentes pode 
     "axe_source": "server",
     "axe_error": null
   },
+  "persistence": {
+    "persisted": true,
+    "error": null
+  },
   "cached": false
 }
 ```
+
+O bloco `persistence` indica se a análise foi gravada no banco. Quando o PostgreSQL está indisponível, `persisted` vira `false`, `analysis_id` fica `null` e `error` contém uma mensagem amigável — mas os blocos `security` e `accessibility` permanecem completos e válidos.
 
 **Resposta com `dev_mode: true`** — adiciona `detailed_report` (limitado a 50 violações e 10 nós cada):
 
@@ -461,11 +482,13 @@ A extensão envia requisições para `http://localhost:3000/urls/analyze`. A API
 - **`cors`** liberado para uso com a extensão.
 - **Rate limit** global: `1000` requisições por janela de `15 min`, por usuário autenticado ou IP de origem.
 - **Body limit** de `1 MB` em JSON e _form-urlencoded_.
-- **Cache de segurança** de 24 h por URL (consulta `url_analyses` antes de chamar APIs externas).
+- **Cache de segurança** de 24 h por URL (consulta `url_analyses` antes de chamar APIs externas). A consulta é envolvida em `try/catch`, então uma falha do banco apenas resulta em _cache miss_ — nunca derruba o pipeline.
+- **Pool de PostgreSQL resiliente**: handler de `pool.on('error')` evita que conexões ociosas mortas (ex.: Postgres reiniciou) emitam `uncaughtException` e crashem o processo. `connectionTimeoutMillis` curto (5 s) faz o app falhar rápido em ambientes degradados.
+- **Persistência tolerante a falhas**: o `INSERT` em `url_analyses` é isolado em `try/catch`. Falhas são logadas pelo `winston` (`[DB-PERSISTENCE]`, com `code` do PG) e propagadas ao cliente como `persistence.persisted: false`, sem afetar o resultado de segurança.
 - **Reciclagem do Chromium**: o Puppeteer compartilha uma instância única, recicla a cada 50 páginas e encerra automaticamente após 10 min de inatividade para liberar memória.
 - **Request interception** durante o axe-core: imagens, fontes, CSS e mídia são bloqueados para acelerar a auditoria.
 - **Shutdown gracioso**: `SIGINT`/`SIGTERM` fecham o Chromium antes de derrubar o servidor.
-- **Logging**: `winston` grava em `error.log` (nível _error_) e `combined.log`, além do console.
+- **Logging**: `winston` grava em `error.log` (nível _error_) e `combined.log`, além do console. Erros do banco usam o prefixo estruturado `[DB-CACHE]` / `[DB-PERSISTENCE]` para facilitar a triagem.
 
 ## Scripts disponíveis
 
@@ -502,7 +525,7 @@ Fixtures em `api/tests/fixtures/test-urls.json` (URLs seguras, suspeitas e invá
 ## Limitações conhecidas
 
 - **Histórico na UI:** a API expõe `GET /users/history`, mas a extensão ainda não exibe esse histórico ao usuário.
-- **Falha do banco:** se o PostgreSQL estiver indisponível, o alerta de segurança continua sendo retornado; apenas a persistência falha silenciosamente (log de erro no servidor).
+- **Modo degradado (banco indisponível):** o alerta de segurança e a nota de acessibilidade continuam sendo devolvidos normalmente — a falha agora é sinalizada (`persistence.persisted: false` + `GET /api/status` reportando `database.ok: false`) e logada com `winston`, mas as análises geradas nesse intervalo **não ficam no histórico** quando o Postgres volta. Não há replay automático.
 - **`dev_mode` em produção:** o relatório detalhado pode trazer trechos de HTML da página auditada — use apenas em ambientes de desenvolvimento/staging.
 - **Puppeteer no host:** sem Docker, o `PUPPETEER_EXECUTABLE_PATH` precisa apontar para um binário compatível do Chrome/Chromium.
 

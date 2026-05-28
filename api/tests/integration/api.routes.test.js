@@ -4,10 +4,16 @@ const request = require("supertest");
 const app = require("../helpers/testApp");
 
 describe("API routes (integration)", () => {
-  it("GET /api/status retorna 200", async () => {
+  it("GET /api/status retorna 200 e inclui health do banco", async () => {
     const res = await request(app).get("/api/status");
     assert.equal(res.status, 200);
     assert.equal(res.body.sucesso, true);
+    assert.ok(res.body.dependencies, "deve expor o bloco dependencies");
+    assert.ok(
+      res.body.dependencies.database,
+      "deve expor health do banco em dependencies.database",
+    );
+    assert.equal(typeof res.body.dependencies.database.ok, "boolean");
   });
 
   it("GET /api/docs.json expõe especificação OpenAPI", async () => {
@@ -56,6 +62,8 @@ describe("API routes (integration)", () => {
     assert.ok(res.body.accessibility);
     assert.equal(typeof res.body.accessibility.quality_rating, "number");
     assert.equal(res.body.cached, false);
+    assert.ok(res.body.persistence, "deve incluir o bloco persistence");
+    assert.equal(typeof res.body.persistence.persisted, "boolean");
   });
 
   it("GET /urls/scores/history exige url válida", async () => {

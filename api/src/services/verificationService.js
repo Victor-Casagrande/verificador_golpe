@@ -7,7 +7,7 @@ const {
 const { checkStaticHeuristics } = require("../utils/urlHeuristics");
 const { extractSiteHost } = require("../utils/urlNormalize");
 const { formatDetailedViolations } = require("../utils/axeViolations");
-const { parseDevMode } = require("../utils/devMode");
+const logger = require("../utils/logger");
 
 const sanitizeClientReport = (report) => {
   if (!Array.isArray(report)) return [];
@@ -45,11 +45,20 @@ const buildAccessibilityPayload = (
   return payload;
 };
 
+/**
+ * Monta a resposta final da análise.
+ *
+ * Inclui o bloco `persistence` para que o cliente saiba se o registro foi salvo
+ * no banco — útil para diagnóstico quando o PostgreSQL está indisponível.
+ * O fluxo de segurança/acessibilidade NÃO é interrompido por falha de DB:
+ * a extensão continua recebendo o alerta de golpe normalmente.
+ */
 const buildResponse = ({
   analysisId,
   securityResult,
   accessibility,
   securityFromCache,
+  persistence,
 }) => ({
   analysis_id: analysisId,
   security: {
@@ -57,11 +66,31 @@ const buildResponse = ({
     from_cache: securityFromCache,
   },
   accessibility,
+  persistence,
   cached: false,
 });
 
+/**
+ * Tenta recuperar uma análise de segurança recente em cache (24 h).
+ *
+ * IMPORTANTE: protege o fluxo contra indisponibilidade do banco. Se o
+ * Postgres estiver fora do ar, a consulta retorna `null` e o restante do
+ * pipeline (Google Safe Browsing + heurísticas) continua executando
+ * normalmente — a extensão recebe o alerta, apenas sem o benefício do cache.
+ */
+const tryFindCachedSecurity = async (urlString) => {
+  try {
+    return await historyRepository.findCachedSecurityByUrl(urlString);
+  } catch (err) {
+    logger.warn(
+      `[DB-CACHE] Falha ao consultar cache de segurança para ${urlString}: ${err.message}`,
+    );
+    return null;
+  }
+};
+
 const runSecurityCheck = async (urlString) => {
-  const cached = await historyRepository.findCachedSecurityByUrl(urlString);
+  const cached = await tryFindCachedSecurity(urlString);
 
   if (cached) {
     return {
@@ -115,13 +144,48 @@ const runSecurityCheck = async (urlString) => {
       securityResult = checkStaticHeuristics(urlString);
     }
   } catch (externalApiError) {
-    console.warn(
-      `[SENTRY-WARNING] Falha na verificação externa. Fallback local: ${externalApiError.message}`,
+    logger.warn(
+      `[SAFE-BROWSING] Falha na verificação externa. Fallback heurístico local: ${externalApiError.message}`,
     );
     securityResult = checkStaticHeuristics(urlString);
   }
 
   return { result: securityResult, fromCache: false };
+};
+
+/**
+ * Persiste a análise no banco com tratamento isolado de erro.
+ *
+ * Estratégia de degradação: se o Postgres estiver indisponível, NÃO propagamos
+ * a exceção — a análise de segurança/acessibilidade é uma feature de tempo real
+ * que deve continuar funcionando. Em vez disso, registramos o erro estruturado
+ * via winston e devolvemos um payload `persistence` que descreve o estado para
+ * o cliente (campo `persisted: false` e mensagem amigável).
+ */
+const persistAnalysis = async (payload) => {
+  try {
+    const saved = await historyRepository.saveAnalysis(payload);
+    return {
+      analysisId: saved?.id ?? null,
+      persistence: {
+        persisted: true,
+        error: null,
+      },
+    };
+  } catch (dbError) {
+    logger.error(
+      `[DB-PERSISTENCE] Falha ao salvar análise da URL ${payload.url}: ${dbError.message}`,
+      { url: payload.url, siteHost: payload.siteHost, code: dbError.code },
+    );
+    return {
+      analysisId: null,
+      persistence: {
+        persisted: false,
+        error:
+          "Análise não foi gravada no histórico — banco de dados indisponível. O alerta de segurança permanece válido.",
+      },
+    };
+  }
 };
 
 /**
@@ -197,32 +261,26 @@ const verifyUrl = async (
     devMode,
   );
 
-  let analysisId = null;
-
-  try {
-    const saved = await historyRepository.saveAnalysis({
-      userId,
-      url: urlString,
-      siteHost,
-      isDanger: securityResult.is_danger,
-      status: securityResult.status,
-      reason: securityResult.reason,
-      accessibilityViolations: axeMeta.violations,
-      accessibilityScore: accessibility.accessibility_score,
-      qualityRating: accessibility.quality_rating,
-      axeSource: accessibility.axe_source,
-      securityFromCache: securityFromCache,
-    });
-    analysisId = saved?.id ?? null;
-  } catch (dbError) {
-    console.error("Falha ao persistir análise:", dbError);
-  }
+  const { analysisId, persistence } = await persistAnalysis({
+    userId,
+    url: urlString,
+    siteHost,
+    isDanger: securityResult.is_danger,
+    status: securityResult.status,
+    reason: securityResult.reason,
+    accessibilityViolations: axeMeta.violations,
+    accessibilityScore: accessibility.accessibility_score,
+    qualityRating: accessibility.quality_rating,
+    axeSource: accessibility.axe_source,
+    securityFromCache: securityFromCache,
+  });
 
   return buildResponse({
     analysisId,
     securityResult,
     accessibility,
     securityFromCache,
+    persistence,
   });
 };
 
@@ -231,4 +289,6 @@ module.exports = {
   runSecurityCheck,
   resolveAccessibilityReport,
   buildAccessibilityPayload,
+  persistAnalysis,
+  tryFindCachedSecurity,
 };
