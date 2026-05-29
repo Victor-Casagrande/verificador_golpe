@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sentinela APL</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div id="login-view" class="view">
+        <div class="header">
+          <img
+            src="icon.png"
+            alt="Sentinela Logo"
+            onerror="this.style.display = 'none'"
+            width="48"
+          />
+          <h2>Sentinela APL</h2>
+          <p>Acesso restrito ao domínio @ifc.edu.br</p>
+        </div>
+        <button id="btn-login" class="btn primary">Login com Google</button>
+      </div>
+
+      <div id="dashboard-view" class="view hidden">
+        <div class="header-dashboard">
+          <h2>Sentinela Dashboard</h2>
+          <button id="btn-logout" class="btn-text">Sair</button>
+        </div>
+
+        <div class="actions">
+          <button id="btn-report" class="btn warning">
+            Denunciar Página Atual
+          </button>
+        </div>
+
+        <div class="tabs">
+          <button class="tab-btn active" data-target="history-tab">
+            Meu Histórico
+          </button>
+          <button class="tab-btn" data-target="ranking-tab">
+            Ranking Global
+          </button>
+        </div>
+
+        <div id="history-tab" class="tab-content active">
+          <ul id="history-list" class="list">
+            <li class="loading">Carregando histórico...</li>
+          </ul>
+        </div>
+
+        <div id="ranking-tab" class="tab-content hidden">
+          <ul id="ranking-list" class="list">
+            <li class="loading">Carregando rankings...</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <script src="popup.js"></script>
+  </body>
+</html>

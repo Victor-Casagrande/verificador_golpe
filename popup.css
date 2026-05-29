@@ -1,0 +1,137 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+body {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  width: 340px;
+  background-color: #f8fafc;
+  color: #1e293b;
+}
+.container {
+  padding: 16px;
+}
+.view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.hidden {
+  display: none !important;
+}
+.header {
+  text-align: center;
+  margin-bottom: 8px;
+}
+.header h2 {
+  font-size: 1.25rem;
+  color: #0f172a;
+  margin: 8px 0;
+}
+.header p {
+  font-size: 0.85rem;
+  color: #64748b;
+}
+.header-dashboard {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 8px;
+}
+.header-dashboard h2 {
+  font-size: 1.1rem;
+}
+
+.btn {
+  width: 100%;
+  padding: 10px;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.primary {
+  background-color: #2563eb;
+  color: #fff;
+}
+.primary:hover {
+  background-color: #1d4ed8;
+}
+.warning {
+  background-color: #dc2626;
+  color: #fff;
+}
+.warning:hover {
+  background-color: #b91c1c;
+}
+.btn-text {
+  background: none;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  font-size: 0.85rem;
+  text-decoration: underline;
+}
+
+.tabs {
+  display: flex;
+  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 12px;
+}
+.tab-btn {
+  flex: 1;
+  padding: 8px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: #64748b;
+}
+.tab-btn.active {
+  color: #2563eb;
+  border-bottom-color: #2563eb;
+  font-weight: 600;
+}
+
+.list {
+  list-style: none;
+  max-height: 250px;
+  overflow-y: auto;
+}
+.list li {
+  padding: 10px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  font-size: 0.85rem;
+}
+.list li.loading {
+  text-align: center;
+  border: none;
+  background: none;
+  color: #94a3b8;
+}
+.item-title {
+  font-weight: 600;
+  word-break: break-all;
+  margin-bottom: 4px;
+}
+.item-meta {
+  display: flex;
+  justify-content: space-between;
+  color: #64748b;
+  font-size: 0.75rem;
+}
+.status-safe {
+  color: #16a34a;
+  font-weight: bold;
+}
+.status-danger {
+  color: #dc2626;
+  font-weight: bold;
+}

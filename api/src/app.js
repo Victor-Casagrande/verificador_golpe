@@ -49,15 +49,6 @@ app.use('/rankings', rankingRoutes);
 app.use('/urls/scores', urlScoreRoutes);
 app.use('/urls/analyze', verificationRoutes);
 
-/**
- * Health check.
- *
- * Sempre retorna 200 enquanto a API estiver respondendo — mesmo com o banco
- * fora do ar — porque o fluxo principal (verificação de segurança +
- * acessibilidade) continua funcionando sem persistência. O estado do banco
- * vai no payload (`dependencies.database`) para que dashboards e clientes
- * (a extensão, por exemplo) consigam diagnosticar a degradação.
- */
 app.get('/api/status', async (req, res) => {
   const dbHealth = await db.ping();
 

@@ -1,7 +1,14 @@
 const SENTRY_CONFIG = {
-  API_URL: "http://localhost:3000",
   TIMEOUT_MS: 90000,
 };
+
+async function getApiUrl() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(["API_URL"], (result) => {
+      resolve(result.API_URL || "http://localhost:3000");
+    });
+  });
+}
 
 function createAlertOverlay(status, reason) {
   const overlay = document.createElement("div");
@@ -19,13 +26,14 @@ function createAlertOverlay(status, reason) {
   overlay.style.fontFamily = "Arial, sans-serif";
   overlay.style.textAlign = "center";
   overlay.style.padding = "20px";
+  overlay.style.zIndex = "999999";
 
   overlay.innerHTML = `
         <h1 style="font-size: 3rem; margin-bottom: 10px;">⚠️ ALERTA DE SEGURANÇA</h1>
-        <h2 style="font-size: 2rem; margin-bottom: 20px;">${status}</h2>
+        <h2 id="sentry-status-text" style="font-size: 2rem; margin-bottom: 20px;"></h2>
         <p style="font-size: 1.2rem; margin-bottom: 40px; max-width: 600px;">
             O Sentinela bloqueou esta página pelo seguinte motivo:<br>
-            <strong>${reason}</strong>
+            <strong id="sentry-reason-text"></strong>
         </p>
         <button id="btn-voltar" style="padding: 15px 30px; font-size: 1.2rem; background-color: #ffffff; color: #dc2626; border: none; border-radius: 8px; cursor: pointer; margin-bottom: 15px; font-weight: bold;">
             Sair desta página (Recomendado)
@@ -35,10 +43,10 @@ function createAlertOverlay(status, reason) {
         </button>
     `;
 
-  overlay.querySelector("#sentry-status-text").textContent = status;
-  overlay.querySelector("#sentry-reason-text").textContent = reason;
-
   document.body.appendChild(overlay);
+
+  document.getElementById("sentry-status-text").textContent = status;
+  document.getElementById("sentry-reason-text").textContent = reason;
 
   document.getElementById("btn-voltar").addEventListener("click", () => {
     window.history.back();
@@ -51,6 +59,8 @@ function createAlertOverlay(status, reason) {
 
 async function verifySiteAndAccessibility() {
   const currentUrl = window.location.href;
+  const apiUrl = await getApiUrl();
+  const endpoint = `${apiUrl}/urls/analyze`;
 
   const controller = new AbortController();
   const timeoutId = setTimeout(
@@ -59,13 +69,9 @@ async function verifySiteAndAccessibility() {
   );
 
   try {
-    const endpoint = `${SENTRY_CONFIG.API_URL}/urls/analyze`;
-
     const response = await fetch(endpoint, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url: currentUrl }),
       signal: controller.signal,
     });
@@ -74,7 +80,7 @@ async function verifySiteAndAccessibility() {
 
     if (!response.ok) {
       console.error(
-        "Erro na comunicação com o servidor SentryVZN. Código HTTP:",
+        "Erro na comunicação com o servidor Sentinela. Código HTTP:",
         response.status,
       );
       return;
@@ -92,16 +98,12 @@ async function verifySiteAndAccessibility() {
     }
   } catch (error) {
     clearTimeout(timeoutId);
-
     if (error.name === "AbortError") {
       console.error(
-        `SentryVZN: O servidor demorou mais de ${SENTRY_CONFIG.TIMEOUT_MS / 1000} segundos a responder. Pedido cancelado para não bloquear o navegador.`,
+        `Sentinela: Servidor demorou mais de ${SENTRY_CONFIG.TIMEOUT_MS / 1000}s. Cancelado.`,
       );
     } else {
-      console.error(
-        "SentryVZN: Falha ao tentar verificar a URL e a acessibilidade na rede:",
-        error,
-      );
+      console.error("Sentinela: Falha na verificação de rede:", error);
     }
   }
 }
