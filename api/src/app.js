@@ -107,10 +107,19 @@ app.get('/', (req, res) => {
       },
       relatorios: {
         href: `${baseUrl}/reports`,
+        method: 'POST',
+        descricao: 'Envia feedback do usuário sobre uma URL/análise (requer JWT)'
+      },
+      rankingsAcessibilidadePiores: {
+        href: `${baseUrl}/rankings/accessibility/worst`,
         method: 'GET'
       },
-      rankings: {
-        href: `${baseUrl}/rankings`,
+      rankingsAcessibilidadeMelhores: {
+        href: `${baseUrl}/rankings/accessibility/best`,
+        method: 'GET'
+      },
+      rankingsDenuncias: {
+        href: `${baseUrl}/rankings/reports/most`,
         method: 'GET'
       },
       analisarUrls: {

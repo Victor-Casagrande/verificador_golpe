@@ -492,16 +492,18 @@ A extensão envia requisições para `http://localhost:3000/urls/analyze`. A API
 
 ## Scripts disponíveis
 
-| Comando                     | Pasta  | Descrição                                                       |
-| --------------------------- | ------ | --------------------------------------------------------------- |
-| `npm start`                 | `api/` | Inicia o servidor (produção / Docker)                           |
-| `npm run dev`               | `api/` | Inicia o servidor com `nodemon` (hot reload)                    |
-| `npm test`                  | `api/` | Roda testes unitários + integração (`node --test`)              |
-| `npm run test:unit`         | `api/` | Apenas testes unitários                                         |
-| `npm run test:integration`  | `api/` | Apenas testes de integração (supertest contra app em memória)   |
-| `npm run test:urls`         | `api/` | Bate na API em execução com a fixture de URLs (smoke test real) |
-| `node scripts/gerarJWT.js`  | `api/` | Gera um JWT local para testes manuais                           |
-| `docker compose up --build` | raiz   | Sobe API + PostgreSQL                                           |
+| Comando                                | Pasta  | Descrição                                                              |
+| -------------------------------------- | ------ | ---------------------------------------------------------------------- |
+| `npm start`                            | `api/` | Inicia o servidor (produção / Docker)                                  |
+| `npm run dev`                          | `api/` | Inicia o servidor com `nodemon` (hot reload)                           |
+| `npm test`                             | `api/` | Roda testes unitários + integração (`node --test`)                     |
+| `npm run test:unit`                    | `api/` | Apenas testes unitários                                                |
+| `npm run test:integration`             | `api/` | Apenas testes de integração (supertest contra app em memória)          |
+| `npm run test:urls`                    | `api/` | Bate na API em execução com a fixture de URLs (smoke test real)        |
+| `npm run jwt`                          | `api/` | Gera um JWT local — interativo, lista usuários do banco                |
+| `npm run jwt -- --user-id=1`           | `api/` | Gera JWT direto para um `id` específico (uso em CI)                    |
+| `npm run login:simulate`               | `api/` | Simulação interativa do login (e-mail/senha + OAuth opcional)          |
+| `docker compose up --build`            | raiz   | Sobe API + PostgreSQL                                                  |
 
 ## Testes
 
@@ -511,7 +513,7 @@ npm install
 npm test
 ```
 
-Cobertura atual: utilitários de URL (`urlHeuristics`, `validators`), pontuação de acessibilidade, parsing de `dev_mode`, formatação detalhada de violações axe-core, estado OAuth e rotas críticas (`/urls/analyze`, `/auth/*`, `/rankings/*`, `/users/history`).
+Cobertura atual: utilitários de URL (`urlHeuristics`, `validators`), pontuação de acessibilidade, parsing de `dev_mode`, formatação detalhada de violações axe-core, OAuth (state, `buildAuthorizeUrl`, `getConfiguredProviders`, `exchangeCodeForToken`, `handleCallback` com fetch e repositórios mockados, `resolveOrCreateUser`) e rotas críticas (`/urls/analyze`, `/auth/*`, `/rankings/*`, `/users/history`).
 
 Smoke test contra a API em execução (`npm run dev`):
 
@@ -521,6 +523,33 @@ npm run test:urls
 ```
 
 Fixtures em `api/tests/fixtures/test-urls.json` (URLs seguras, suspeitas e inválidas).
+
+### Scripts de autenticação manual
+
+Para reproduzir o fluxo completo de login (registro → login → OAuth opcional) com seu próprio e-mail/senha:
+
+```bash
+# 1. interativo (pede e-mail, senha, oferece registro automático)
+npm run login:simulate
+
+# 2. não interativo (CI / scripts)
+npm run login:simulate -- --email=foo@bar.com --password=senha123 --name="Foo Bar"
+
+# 3. inclui o fluxo OAuth (apenas imprime a URL para abrir no browser e cola o token de volta)
+npm run login:simulate -- --oauth=github
+```
+
+E para gerar um JWT manualmente a partir de um usuário existente no banco:
+
+```bash
+# lista usuários e pede para escolher
+npm run jwt
+
+# direto
+npm run jwt -- --user-id=1
+```
+
+Ambos respeitam `JWT_SECRET` do `.env` — nada é hardcoded.
 
 ## Limitações conhecidas
 
