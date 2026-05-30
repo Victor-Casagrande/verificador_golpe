@@ -31,26 +31,30 @@ services:
     restart: unless-stopped
     ports:
       - "${PORT:-3000}:3000"
+    # Carrega TODAS as variáveis do .env da raiz do projeto dentro do container.
+    # É o mesmo arquivo que o `docker compose` usa para interpolar ${VAR} acima —
+    # declarando aqui de forma explícita garantimos que credenciais OAuth
+    # (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET)
+    # cheguem ao processo Node mesmo quando esquecermos de listá-las em `environment`.
+    env_file:
+      - ./.env
     environment:
+      # Overrides específicos do container (sobrescrevem o env_file se presentes).
+      # Mantemos defaults seguros para que `docker compose up` funcione mesmo sem .env.
       PORT: 3000
-      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_NAME: ${DB_NAME:-sentinela}
       JWT_SECRET: ${JWT_SECRET:-dev_secret_change_in_production}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
-      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
-      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
       GITHUB_CALLBACK_URL: ${GITHUB_CALLBACK_URL:-http://localhost:3000/auth/oauth/github/callback}
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:3000/auth/oauth/google/callback}
-      OAUTH_SUCCESS_REDIRECT: ${OAUTH_SUCCESS_REDIRECT:-}
+      OAUTH_SUCCESS_REDIRECT: ${OAUTH_SUCCESS_REDIRECT:-http://localhost:3000/auth/success}
       AXE_ENABLED: ${AXE_ENABLED:-true}
       AXE_TIMEOUT_MS: ${AXE_TIMEOUT_MS:-45000}
       PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
-      DB_USER: ${DB_USER:-postgres}
-      DB_PASSWORD: ${DB_PASSWORD:-postgres}
-      DB_HOST: db
-      DB_NAME: ${DB_NAME:-sentinela}
-      DB_PORT: 5432
     depends_on:
       db:
         condition: service_healthy

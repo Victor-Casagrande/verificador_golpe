@@ -293,8 +293,51 @@ O **e-mail é a chave da conta**: login via GitHub ou Google com o mesmo e-mail 
 | `GET /auth/oauth/google`              | Inicia login Google                             |
 | `GET /auth/oauth/{provider}/callback` | Callback — retorna JSON com JWT (ou redireciona |
 |                                       | para `OAUTH_SUCCESS_REDIRECT` com `?token=...`) |
+| `GET /auth/success`                   | Página de aterrissagem que exibe o JWT, copia   |
+|                                       | para clipboard, faz `postMessage` para popups e |
+|                                       | `chrome.runtime.sendMessage` para a extensão    |
 
-Configure no `.env`: `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GITHUB_CALLBACK_URL` e equivalentes `GOOGLE_*`.
+Fluxo interno em ambos os provedores:
+
+1. `buildAuthorizeUrl` monta a URL com `client_id`, `redirect_uri`, `scope` e um `state` assinado em JWT (10 min de validade) que serve de CSRF. Para o Google adicionamos `response_type=code`, `access_type=online`, `prompt=select_account`, `include_granted_scopes=true` e um `nonce` para correlação OpenID Connect.
+2. Após autorizar, o provedor redireciona ao callback com `?code=...&state=...`.
+3. A API valida o `state`, troca o `code` por `access_token` no token endpoint e busca o perfil (`/user` no GitHub, `/oauth2/v2/userinfo` no Google).
+4. O usuário é resolvido por `provider_user_id`; se não encontrado, busca por e-mail (unificando contas locais ou de outro provedor); se ainda não existir, é criado com `password_hash = null`.
+5. JWT da aplicação é assinado e devolvido (JSON puro **ou** redirect para `OAUTH_SUCCESS_REDIRECT?token=...`).
+
+##### Como criar as credenciais no Google Cloud Console
+
+1. Acesse [console.cloud.google.com](https://console.cloud.google.com/) e selecione/crie um projeto.
+2. **APIs & Services → OAuth consent screen** → tipo `External`, preencha nome do app, e-mail de suporte e adicione seu e-mail nos *Test users* (enquanto não publicar).
+3. **APIs & Services → Credentials → Create Credentials → OAuth client ID**.
+   - Application type: **Web application**.
+   - Authorized redirect URIs: `http://localhost:3000/auth/oauth/google/callback` (e a URL de produção se aplicável).
+4. Copie o **Client ID** e **Client Secret** gerados para o `.env` raiz nas variáveis `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`.
+5. (Opcional, mas recomendado) Habilite as APIs **Google+ API** ou **People API** para garantir que `/oauth2/v2/userinfo` retorne `name` e `verified_email`.
+
+##### Como criar as credenciais no GitHub
+
+1. [github.com/settings/developers](https://github.com/settings/developers) → **OAuth Apps → New OAuth App**.
+2. Authorization callback URL: `http://localhost:3000/auth/oauth/github/callback`.
+3. Copie **Client ID** e gere um **Client Secret** → grave em `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` no `.env` raiz.
+
+##### Onde colocar as credenciais
+
+Tudo vai em **um único `.env` na raiz do projeto** (mesmo nível do `docker-compose.yml`). O Compose carrega esse arquivo explicitamente via `env_file: ./.env` na service `api`, então as variáveis chegam ao container Node sem precisar listar cada uma em `environment:`.
+
+```bash
+GOOGLE_CLIENT_ID=...apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=GOCSPX-...
+GOOGLE_CALLBACK_URL=http://localhost:3000/auth/oauth/google/callback
+
+GITHUB_CLIENT_ID=Ov23li...
+GITHUB_CLIENT_SECRET=...
+GITHUB_CALLBACK_URL=http://localhost:3000/auth/oauth/github/callback
+
+OAUTH_SUCCESS_REDIRECT=http://localhost:3000/auth/success
+```
+
+Em desenvolvimento sem Docker (rodando `npm run dev` na pasta `api/`), use um `api/.env` separado **ou** crie um symlink do `.env` raiz: `cd api && mklink .env ..\.env` (Windows) / `cd api && ln -s ../.env .env` (Linux/Mac).
 
 ### `POST /urls/analyze`
 
@@ -513,7 +556,20 @@ npm install
 npm test
 ```
 
-Cobertura atual: utilitários de URL (`urlHeuristics`, `validators`), pontuação de acessibilidade, parsing de `dev_mode`, formatação detalhada de violações axe-core, OAuth (state, `buildAuthorizeUrl`, `getConfiguredProviders`, `exchangeCodeForToken`, `handleCallback` com fetch e repositórios mockados, `resolveOrCreateUser`) e rotas críticas (`/urls/analyze`, `/auth/*`, `/rankings/*`, `/users/history`).
+Cobertura unitária atual (`npm run test:unit`, **42 testes**):
+
+| Suite | O que cobre |
+| --- | --- |
+| `accessibilityScore` | Pontuação ponderada por impacto e `quality_rating` |
+| `axeDetailedReport` | `dev_mode` e formatação detalhada das violações |
+| `urlHeuristics` | 7 regras heurísticas + URLs inválidas |
+| `validators` | Validação de URLs HTTP/HTTPS |
+| `verificationServiceResilience` | Falhas de cache/persistência no Postgres |
+| `oauthState` | CSRF do OAuth (state + nonce) |
+| **`authServiceLocal`** | Fluxo **local**: register, login OK, senha errada, e-mail inexistente, registro duplicado, conta OAuth sem senha |
+| **`oauthServiceFlow`** | Simulação completa **GitHub** e **Google**: `buildAuthorizeUrl` (URL, scopes, nonce), `handleCallback` (state, exchange de code, fetch de perfil, criação/unificação de usuário, vínculo OAuth, JWT), erros de rede/HTTP, fallback `/user/emails` do GitHub, `verified_email=false` do Google, e-mail privado, unificação cross-provider |
+
+Os testes unitários usam stubs de `bcrypt`, `jsonwebtoken`, `pg`, `dotenv` e do `fetch` global via `tests/helpers/moduleStubs.js` — então rodam **sem `npm install`** no ambiente. Para integração (`npm run test:integration` com `supertest`) é necessário instalar dependências.
 
 Smoke test contra a API em execução (`npm run dev`):
 
@@ -526,17 +582,48 @@ Fixtures em `api/tests/fixtures/test-urls.json` (URLs seguras, suspeitas e invá
 
 ### Scripts de autenticação manual
 
-Para reproduzir o fluxo completo de login (registro → login → OAuth opcional) com seu próprio e-mail/senha:
+`npm run login:simulate` é um menu interativo que cobre os **três** fluxos
+ponta-a-ponta contra a API em execução:
+
+```
+Sentinela — simulação de login
+  API alvo: http://localhost:3000
+  ----------------------------------------------------------
+  [1] LOCAL    — e-mail + senha (registra se não existir)
+  [2] GITHUB   — OAuth (configurado | NÃO configurado)
+  [3] GOOGLE   — OAuth (configurado | NÃO configurado)
+  [0] Sair
+```
+
+O que cada opção faz:
+
+- **[1] LOCAL** — pede e-mail (valida formato) e senha (digitação mascarada
+  com `*`). Tenta `POST /auth/login`; se falhar com 401/404, pergunta se
+  deseja registrar, coleta o nome e chama `POST /auth/register`. Ao final
+  imprime o JWT e valida com `GET /users/history?limit=1`.
+- **[2] GITHUB / [3] GOOGLE** — confirma com `GET /auth/oauth/providers`
+  se o provedor está configurado, imprime a URL de autorização, tenta
+  abrir o navegador padrão e aguarda você colar de volta a URL final do
+  callback, o JSON `{token, user}` ou apenas o JWT puro. O token extraído
+  é então validado contra `GET /users/history`.
+
+Após cada execução o menu reaparece para você experimentar outro fluxo
+(ou `0` para sair). Para automação/CI também há modo não-interativo:
 
 ```bash
-# 1. interativo (pede e-mail, senha, oferece registro automático)
+# Modo interativo (recomendado)
 npm run login:simulate
 
-# 2. não interativo (CI / scripts)
-npm run login:simulate -- --email=foo@bar.com --password=senha123 --name="Foo Bar"
+# Local sem prompts (útil em CI)
+npm run login:simulate -- --flow=local --email=foo@bar.com --password=senha123 --name="Foo Bar"
 
-# 3. inclui o fluxo OAuth (apenas imprime a URL para abrir no browser e cola o token de volta)
-npm run login:simulate -- --oauth=github
+# OAuth direto (pula o menu, ainda aguarda você colar o callback)
+npm run login:simulate -- --flow=google
+
+# Flags úteis:
+#   --base-url=http://host:3000   API alvo (default: PORT do .env)
+#   --no-open                     Não tenta abrir o navegador
+#   --once                        Executa um fluxo e sai (sem voltar ao menu)
 ```
 
 E para gerar um JWT manualmente a partir de um usuário existente no banco:

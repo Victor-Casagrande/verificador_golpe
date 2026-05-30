@@ -1,31 +1,45 @@
 #!/usr/bin/env node
 /**
- * Simulação ponta-a-ponta do fluxo de autenticação contra a API em execução.
+ * Simulação ponta-a-ponta dos 3 fluxos de autenticação contra a API em
+ * execução. Roda em um loop interativo de terminal: o usuário escolhe o
+ * fluxo no menu, preenche os campos solicitados e o script executa todo o
+ * processo (auth → token → validação contra GET /users/history).
  *
  * Fluxos suportados:
- *   1. Login local com e-mail + senha (registra automaticamente se ainda não existe).
- *   2. OAuth GitHub / Google: imprime a URL do provedor e aguarda o usuário colar
- *      a URL final do callback para extrair o token (ou, se OAUTH_SUCCESS_REDIRECT
- *      estiver configurado, o token vem direto na query string).
+ *   [1] LOCAL    — e-mail + senha (com fallback de auto-registro)
+ *   [2] GITHUB   — Authorization Code + state CSRF + troca por token + perfil
+ *   [3] GOOGLE   — idem GitHub, com scopes OpenID Connect e validação de
+ *                  verified_email no profile
  *
- * Modos:
- *   - Interativo:  npm run login:simulate
- *   - Não-interativo:
- *       npm run login:simulate -- --email=foo@bar.com --password=senha123 --name="Foo"
- *   - OAuth:       npm run login:simulate -- --oauth=github
+ * Modos de execução:
+ *   Interativo (recomendado):
+ *     npm run login:simulate
  *
- * Após o login, valida o token chamando GET /users/history.
+ *   Não-interativo (CI / scripts), mantendo compat com a versão antiga:
+ *     npm run login:simulate -- --flow=local --email=foo@bar.com --password=senha123 --name=Foo
+ *     npm run login:simulate -- --flow=github
+ *     npm run login:simulate -- --flow=google --no-open
+ *
+ * Flags adicionais:
+ *   --base-url=http://outro:3000   API alvo (default: PORT do .env ou 3000)
+ *   --no-open                      Não tenta abrir o navegador automaticamente
+ *   --once                         Executa um fluxo e sai (sem loop de menu)
  */
 
-require("dotenv").config();
+// `dotenv` é opcional aqui: quando o script roda dentro de `api/` com
+// node_modules instalado, ele carrega o .env. Fora disso (CI minimalista),
+// o usuário pode exportar PORT/API_BASE_URL manualmente.
+try {
+  require("dotenv").config();
+} catch {
+  /* dotenv ausente — seguimos com process.env "puro" */
+}
+
 const readline = require("node:readline/promises");
 const { stdin, stdout } = require("node:process");
+const { spawn } = require("node:child_process");
 
-const BASE_URL = (
-  process.argv.find((a) => a.startsWith("--base-url="))?.split("=")[1] ||
-  process.env.API_BASE_URL ||
-  `http://localhost:${process.env.PORT || 3000}`
-).replace(/\/$/, "");
+/* ----------------------------- CLI helpers ------------------------------ */
 
 const flag = (name) => {
   const arg = process.argv.find((a) => a.startsWith(`--${name}=`));
@@ -34,19 +48,106 @@ const flag = (name) => {
 
 const has = (name) => process.argv.includes(`--${name}`);
 
-const askPrompt = async (rl, label, { mask = false } = {}) => {
-  if (!mask) return (await rl.question(label)).trim();
-  // Mascaramento simples (não tem suporte nativo no readline; mostramos asterisco apenas no fim)
-  process.stdout.write(label);
-  return new Promise((resolve) => {
-    const onData = (data) => {
-      const value = data.toString().replace(/\r?\n/g, "");
-      stdin.removeListener("data", onData);
-      resolve(value.trim());
+const BASE_URL = (
+  flag("base-url") ||
+  process.env.API_BASE_URL ||
+  `http://localhost:${process.env.PORT || 3000}`
+).replace(/\/$/, "");
+
+const NO_OPEN = has("no-open");
+const ONCE = has("once");
+
+/**
+ * Lê uma linha simples do terminal (com eco normal).
+ */
+const ask = async (rl, label) => (await rl.question(label)).trim();
+
+/**
+ * Lê uma senha do terminal com máscara real usando o stdin em raw mode.
+ * Funciona em Windows, macOS e Linux. Pressionar Ctrl+C aborta o processo.
+ *
+ * Fechamos temporariamente o readline para evitar concorrência por stdin
+ * e o reativamos depois.
+ */
+const askPassword = (rl, label) =>
+  new Promise((resolve, reject) => {
+    rl.pause();
+    process.stdout.write(label);
+    const wasRaw = stdin.isRaw;
+    try {
+      stdin.setRawMode(true);
+    } catch {
+      /* terminais que não suportam raw mode (CI sem TTY) caem no fallback */
+      stdin.resume();
+      stdin.once("data", (data) => {
+        const value = data.toString().replace(/\r?\n/g, "").trim();
+        rl.resume();
+        resolve(value);
+      });
+      return;
+    }
+    stdin.resume();
+    stdin.setEncoding("utf8");
+    let password = "";
+
+    const onData = (char) => {
+      const c = String(char);
+      if (c === "\r" || c === "\n" || c === "\u0004") {
+        stdin.removeListener("data", onData);
+        try {
+          stdin.setRawMode(wasRaw);
+        } catch {
+          /* ignore */
+        }
+        process.stdout.write("\n");
+        rl.resume();
+        resolve(password);
+      } else if (c === "\u0003") {
+        stdin.removeListener("data", onData);
+        try {
+          stdin.setRawMode(wasRaw);
+        } catch {
+          /* ignore */
+        }
+        process.stdout.write("\n^C\n");
+        reject(new Error("Interrompido pelo usuário (Ctrl+C)."));
+      } else if (c === "\u007f" || c === "\b") {
+        if (password.length > 0) {
+          password = password.slice(0, -1);
+          process.stdout.write("\b \b");
+        }
+      } else if (c >= " ") {
+        password += c;
+        process.stdout.write("*");
+      }
     };
-    stdin.once("data", onData);
+    stdin.on("data", onData);
   });
+
+/**
+ * Tenta abrir uma URL no navegador padrão do sistema.
+ * Falha silenciosamente em ambientes sem GUI — o usuário sempre tem o link
+ * impresso para copiar manualmente.
+ */
+const openInBrowser = (url) => {
+  if (NO_OPEN) return false;
+  try {
+    const cmd =
+      process.platform === "win32"
+        ? "cmd"
+        : process.platform === "darwin"
+        ? "open"
+        : "xdg-open";
+    const args =
+      process.platform === "win32" ? ["/c", "start", "", url] : [url];
+    spawn(cmd, args, { detached: true, stdio: "ignore" }).unref();
+    return true;
+  } catch {
+    return false;
+  }
 };
+
+/* ------------------------------ HTTP layer ------------------------------ */
 
 const post = async (path, body, token = null) => {
   const res = await fetch(`${BASE_URL}${path}`, {
@@ -81,25 +182,67 @@ const get = async (path, token = null) => {
   return { status: res.status, body: json, raw: text };
 };
 
+/* ---------------------------- Diagnósticos ------------------------------ */
+
 const checkApiHealth = async () => {
   try {
     const { status, body } = await get("/api/status");
     if (status !== 200) {
-      console.error(`API respondeu ${status}. Verifique se o servidor está rodando em ${BASE_URL}.`);
+      console.error(
+        `API respondeu ${status}. Verifique se o servidor está rodando em ${BASE_URL}.`,
+      );
       process.exit(1);
     }
-    if (body?.dependencies?.database && !body.dependencies.database.ok) {
-      console.warn("[aviso] Banco em modo degradado — registro/login podem falhar.");
+    const dbOk = body?.dependencies?.database?.ok;
+    if (dbOk === false) {
+      console.warn(
+        "[aviso] Banco em modo degradado — registro/login podem falhar.",
+      );
     }
+    return { dbOk: dbOk !== false };
   } catch (err) {
-    console.error(`Não foi possível alcançar ${BASE_URL}. Execute 'npm run dev' antes.`);
+    console.error(
+      `Não foi possível alcançar ${BASE_URL}. Execute 'npm run dev' antes.`,
+    );
     console.error(`Detalhe: ${err.message}`);
     process.exit(1);
   }
 };
 
-const loginOrRegister = async ({ name, email, password, autoRegister }) => {
-  console.log(`\n[1] Tentando login em ${BASE_URL}/auth/login`);
+/**
+ * Consulta /auth/oauth/providers para descobrir quais provedores OAuth
+ * estão configurados no servidor. Usado para exibir o estado no menu e
+ * para falhar cedo quando o usuário escolhe um provedor sem credenciais.
+ */
+const fetchOAuthProviders = async () => {
+  try {
+    const { status, body } = await get("/auth/oauth/providers");
+    if (status !== 200 || !Array.isArray(body?.providers)) return [];
+    return body.providers.map((p) => p.id);
+  } catch {
+    return [];
+  }
+};
+
+const validateToken = async (token) => {
+  console.log("\n→ Validando token em GET /users/history?limit=1");
+  const { status, body } = await get("/users/history?limit=1", token);
+  if (status === 200) {
+    console.log(`  OK — total no histórico do usuário: ${body?.total ?? "?"}`);
+    return true;
+  }
+  console.warn(`  Falha (HTTP ${status}):`, body || "(sem corpo)");
+  return false;
+};
+
+/* ----------------------------- Fluxos auth ------------------------------ */
+
+/**
+ * Tenta login local; se 401, oferece registrar imediatamente (no modo
+ * interativo) ou cria automaticamente quando `--name` foi passado.
+ */
+const loginOrRegister = async (rl, { name, email, password, interactive }) => {
+  console.log(`\n[1] POST ${BASE_URL}/auth/login`);
   let { status, body } = await post("/auth/login", { email, password });
 
   if (status === 200) {
@@ -108,61 +251,72 @@ const loginOrRegister = async ({ name, email, password, autoRegister }) => {
   }
 
   if (status !== 401 && status !== 404) {
-    console.error(`    ✗ Falha inesperada (HTTP ${status}):`, body || "(sem corpo)");
-    process.exit(1);
+    throw new Error(
+      `Falha inesperada no login (HTTP ${status}): ${JSON.stringify(body || {})}`,
+    );
   }
 
-  if (!autoRegister) {
-    console.error("    ✗ Login falhou (credenciais inválidas ou usuário inexistente).");
-    process.exit(1);
+  // 401/404 → conta inexistente ou senha errada.
+  if (interactive && !name) {
+    const proceed = (
+      await ask(rl, "    Conta não encontrada. Deseja registrar agora? [s/N] ")
+    ).toLowerCase();
+    if (proceed !== "s" && proceed !== "sim" && proceed !== "y") {
+      throw new Error("Cancelado pelo usuário.");
+    }
+    name = await ask(rl, "    Nome completo: ");
+    if (!name || name.length < 2) {
+      throw new Error("Nome inválido (mínimo 2 caracteres).");
+    }
   }
 
   if (!name) {
-    console.error("    ✗ Usuário não existe e --name não foi informado.");
-    process.exit(1);
+    throw new Error("Conta não existe e --name não foi informado.");
   }
 
-  console.log("\n[2] Usuário inexistente — registrando via POST /auth/register");
+  console.log(`\n[2] POST ${BASE_URL}/auth/register`);
   ({ status, body } = await post("/auth/register", { name, email, password }));
 
   if (status === 201) {
     console.log("    ✓ Usuário criado e autenticado.");
     return body;
   }
-
-  console.error(`    ✗ Registro falhou (HTTP ${status}):`, body || "(sem corpo)");
-  process.exit(1);
-};
-
-const validateToken = async (token) => {
-  console.log("\n[3] Validando token em GET /users/history");
-  const { status, body } = await get("/users/history?limit=1", token);
-  if (status === 200) {
-    console.log(`    ✓ Token aceito. total_no_historico=${body?.total ?? "?"}`);
-  } else {
-    console.warn(`    ⚠ /users/history respondeu ${status}:`, body || "(sem corpo)");
-  }
+  throw new Error(
+    `Registro falhou (HTTP ${status}): ${JSON.stringify(body || {})}`,
+  );
 };
 
 const runLocalFlow = async (rl) => {
+  console.log("\n──── Fluxo LOCAL (e-mail + senha) ────");
   let email = flag("email");
   let password = flag("password");
   let name = flag("name");
-  const noRegister = has("no-register");
+  const interactive = !email || !password;
 
-  if (!email) email = await askPrompt(rl, "E-mail: ");
-  if (!password) password = await askPrompt(rl, "Senha:  ", { mask: true });
+  while (!email) {
+    email = await ask(rl, "E-mail: ");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      console.log("    E-mail inválido. Tente novamente.");
+      email = null;
+    }
+  }
+  while (!password) {
+    password = await askPassword(rl, "Senha (oculta): ");
+    if (password.length < 6) {
+      console.log("    Senha deve ter pelo menos 6 caracteres.");
+      password = null;
+    }
+  }
 
-  const auth = await loginOrRegister({
+  const auth = await loginOrRegister(rl, {
     name,
     email,
     password,
-    autoRegister: !noRegister && Boolean(name || !flag("email")),
+    interactive,
   });
 
   if (!auth?.token) {
-    console.error("\nResposta sem token. Abortando.");
-    process.exit(1);
+    throw new Error("Resposta sem token.");
   }
 
   console.log("\nToken JWT:");
@@ -173,31 +327,44 @@ const runLocalFlow = async (rl) => {
   await validateToken(auth.token);
 };
 
+/**
+ * Conduz o fluxo OAuth (GitHub ou Google) ponta-a-ponta:
+ *   1. Confirma que o provedor está configurado no servidor.
+ *   2. Imprime/abre a URL de autorização.
+ *   3. Aguarda o usuário colar a URL de callback final, o JSON da resposta
+ *      ou apenas o token bruto.
+ *   4. Extrai o JWT e valida contra /users/history.
+ */
 const runOAuthFlow = async (rl, provider) => {
-  console.log(`\n[1] Verificando se ${provider} está configurado no servidor`);
-  const { status, body } = await get("/auth/oauth/providers");
-  if (status !== 200) {
-    console.error(`    ✗ Não foi possível listar provedores (HTTP ${status}).`);
-    process.exit(1);
+  console.log(`\n──── Fluxo OAUTH ${provider.toUpperCase()} ────`);
+
+  console.log(`\n[1] GET ${BASE_URL}/auth/oauth/providers — checando configuração`);
+  const configured = await fetchOAuthProviders();
+  if (!configured.includes(provider)) {
+    throw new Error(
+      `Provedor "${provider}" não está configurado. ` +
+        `Defina ${provider.toUpperCase()}_CLIENT_ID, ${provider.toUpperCase()}_CLIENT_SECRET ` +
+        `e ${provider.toUpperCase()}_CALLBACK_URL no .env raiz e reinicie a API.`,
+    );
   }
-  const found = body?.providers?.find((p) => p.id === provider);
-  if (!found) {
-    console.error(`    ✗ Provedor ${provider} não está configurado. Defina ${provider.toUpperCase()}_CLIENT_ID/SECRET/CALLBACK_URL no .env.`);
-    process.exit(1);
-  }
-  console.log(`    ✓ ${found.name} configurado.`);
+  console.log(`    ✓ ${provider} configurado no servidor.`);
 
   const authorizeUrl = `${BASE_URL}/auth/oauth/${provider}`;
-  console.log("\n[2] Abra esta URL no navegador para iniciar o login:");
+  console.log("\n[2] URL de autorização:");
   console.log(`    ${authorizeUrl}`);
-  console.log("\n[3] Após autorizar, o navegador será redirecionado para o callback.");
-  console.log("    Sem OAUTH_SUCCESS_REDIRECT: a resposta vem em JSON na própria página.");
-  console.log("    Com OAUTH_SUCCESS_REDIRECT: o token aparece na query string (?token=...).");
 
-  const pasted = await askPrompt(
-    rl,
-    "\nCole aqui a URL final do callback OU o JSON de resposta OU apenas o token: ",
-  );
+  const opened = openInBrowser(authorizeUrl);
+  if (opened) {
+    console.log("    (tentei abrir o navegador automaticamente)");
+  }
+
+  console.log("\n[3] Faça o login no navegador. Quando o callback retornar:");
+  console.log("    • Se OAUTH_SUCCESS_REDIRECT estiver ativo (default), você verá");
+  console.log("      a página /auth/success com o JWT visível e botão 'Copiar'.");
+  console.log("    • Caso contrário, o callback devolve um JSON com {token, user}.");
+  console.log("\n    Cole abaixo: URL final, JSON completo, ou só o JWT.");
+
+  const pasted = await ask(rl, "→ ");
 
   let token = null;
   if (pasted.startsWith("http")) {
@@ -205,14 +372,14 @@ const runOAuthFlow = async (rl, provider) => {
       const u = new URL(pasted);
       token = u.searchParams.get("token");
     } catch {
-      /* ignore */
+      /* não era URL válida */
     }
   }
   if (!token && pasted.startsWith("{")) {
     try {
       token = JSON.parse(pasted).token;
     } catch {
-      /* ignore */
+      /* não era JSON válido */
     }
   }
   if (!token && /^[\w-]+\.[\w-]+\.[\w-]+$/.test(pasted)) {
@@ -220,8 +387,10 @@ const runOAuthFlow = async (rl, provider) => {
   }
 
   if (!token) {
-    console.error("\n    ✗ Não consegui extrair o token. Verifique o que foi colado.");
-    process.exit(1);
+    throw new Error(
+      "Não consegui extrair o JWT do que foi colado. " +
+        "Esperado: URL com ?token=..., JSON com {token: ...}, ou o JWT puro.",
+    );
   }
 
   console.log("\n    ✓ Token extraído:");
@@ -229,27 +398,109 @@ const runOAuthFlow = async (rl, provider) => {
   await validateToken(token);
 };
 
+/* ------------------------------ Menu loop ------------------------------- */
+
+const renderMenu = (configuredProviders) => {
+  const tag = (id) =>
+    configuredProviders.includes(id) ? "configurado" : "NÃO configurado";
+  console.log("");
+  console.log("Sentinela — simulação de login");
+  console.log(`  API alvo: ${BASE_URL}`);
+  console.log("  ----------------------------------------------------------");
+  console.log("  [1] LOCAL    — e-mail + senha (registra se não existir)");
+  console.log(`  [2] GITHUB   — OAuth (${tag("github")})`);
+  console.log(`  [3] GOOGLE   — OAuth (${tag("google")})`);
+  console.log("  [0] Sair");
+};
+
+const promptMenuChoice = async (rl) => {
+  while (true) {
+    const choice = (await ask(rl, "Escolha [0-3]: ")).trim();
+    switch (choice) {
+      case "1":
+        return "local";
+      case "2":
+        return "github";
+      case "3":
+        return "google";
+      case "0":
+      case "q":
+      case "sair":
+        return null;
+      default:
+        console.log("Opção inválida. Digite 0, 1, 2 ou 3.");
+    }
+  }
+};
+
+const resolveFlowFromFlag = () => {
+  const f = (flag("flow") || flag("oauth") || "").toLowerCase();
+  if (f === "local" || f === "github" || f === "google") return f;
+  if (flag("oauth") === "github" || flag("oauth") === "google") {
+    return flag("oauth");
+  }
+  return null;
+};
+
+/* --------------------------------- main --------------------------------- */
+
 const main = async () => {
-  console.log(`Sentinela — simulação de login\nAPI: ${BASE_URL}\n`);
+  console.log(`Sentinela — simulação de login (API: ${BASE_URL})`);
   await checkApiHealth();
 
-  const oauthProvider = flag("oauth");
+  const initialFlow = resolveFlowFromFlag();
+
+  // Sem TTY (pipe/CI) e sem --flow=... explícito, não há como mostrar menu
+  // interativo. Abortamos com instrução clara em vez de erros opacos do readline.
+  if (!stdin.isTTY && !initialFlow) {
+    console.error(
+      "\nstdin não é um TTY interativo. Use --flow=local|github|google " +
+        "(opcionalmente com --email/--password/--name) para modo não-interativo.",
+    );
+    process.exit(2);
+  }
+
   const rl = readline.createInterface({ input: stdin, output: stdout });
 
   try {
-    if (oauthProvider) {
-      await runOAuthFlow(rl, oauthProvider);
-    } else {
-      await runLocalFlow(rl);
-    }
+    do {
+      const providers = await fetchOAuthProviders();
+      let flow = initialFlow;
+
+      if (!flow) {
+        renderMenu(providers);
+        flow = await promptMenuChoice(rl);
+      }
+
+      if (!flow) {
+        console.log("\nAté mais.");
+        return;
+      }
+
+      try {
+        if (flow === "local") await runLocalFlow(rl);
+        else await runOAuthFlow(rl, flow);
+        console.log("\n✓ Fluxo concluído.");
+      } catch (err) {
+        console.error(`\n✗ Erro no fluxo "${flow}": ${err.message}`);
+      }
+
+      if (initialFlow || ONCE) return;
+
+      const again = (
+        await ask(rl, "\nExecutar outro fluxo? [S/n] ")
+      ).toLowerCase();
+      if (again === "n" || again === "nao" || again === "não") {
+        console.log("\nAté mais.");
+        return;
+      }
+    } while (true);
   } finally {
     rl.close();
   }
-
-  console.log("\nConcluído.");
 };
 
 main().catch((err) => {
-  console.error("\nErro:", err.message);
+  console.error("\nErro fatal:", err.message);
   process.exit(1);
 });
