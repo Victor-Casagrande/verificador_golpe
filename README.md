@@ -6,7 +6,7 @@ Extensão para navegador e API backend que ajudam a **identificar páginas poten
 
 Acesse o design do projeto:
 
-https://www.figma.com/design/cSpctw3HFH3WtnrcE4Sxm0/Prot%C3%B3tipo-Golpe?node-id=0-1&t=G2b8J3uETeqTlqHO-1
+[Figma do Projeto](https://www.figma.com/design/cSpctw3HFH3WtnrcE4Sxm0/Prot%C3%B3tipo-Golpe?node-id=0-1&t=G2b8J3uETeqTlqHO-1)
 
 ## Visão geral
 
