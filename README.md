@@ -88,7 +88,7 @@ Na **raiz do repositório**:
 cp .env.example .env
 ```
 
-Edite `.env` e preencha `GOOGLE_API_KEY` com sua chave do Google Safe Browsing.
+Edite `.env` e preencha com os segredos e variáveis de ambiente documentados em: [Requisitos do projeto](https://docs.google.com/document/d/1bA4t_u9DKt3IGHsdiaz70WfL9B5PRPIDOyKWEWOzCB4/edit?usp=sharing)
 
 ### 2. Subir os serviços
 
@@ -310,40 +310,6 @@ Fluxo interno em ambos os provedores:
 3. A API valida o `state`, troca o `code` por `access_token` no token endpoint e busca o perfil (`/user` no GitHub, `/oauth2/v2/userinfo` no Google).
 4. O usuário é resolvido por `provider_user_id`; se não encontrado, busca por e-mail (unificando contas locais ou de outro provedor); se ainda não existir, é criado com `password_hash = null`.
 5. JWT da aplicação é assinado e devolvido (JSON puro **ou** redirect para `OAUTH_SUCCESS_REDIRECT?token=...`).
-
-##### Como criar as credenciais no Google Cloud Console
-
-1. Acesse [console.cloud.google.com](https://console.cloud.google.com/) e selecione/crie um projeto.
-2. **APIs & Services → OAuth consent screen** → tipo `External`, preencha nome do app, e-mail de suporte e adicione seu e-mail nos *Test users* (enquanto não publicar).
-3. **APIs & Services → Credentials → Create Credentials → OAuth client ID**.
-   - Application type: **Web application**.
-   - Authorized redirect URIs: `http://localhost:3000/auth/oauth/google/callback` (e a URL de produção se aplicável).
-4. Copie o **Client ID** e **Client Secret** gerados para o `.env` raiz nas variáveis `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`.
-5. (Opcional, mas recomendado) Habilite as APIs **Google+ API** ou **People API** para garantir que `/oauth2/v2/userinfo` retorne `name` e `verified_email`.
-
-##### Como criar as credenciais no GitHub
-
-1. [github.com/settings/developers](https://github.com/settings/developers) → **OAuth Apps → New OAuth App**.
-2. Authorization callback URL: `http://localhost:3000/auth/oauth/github/callback`.
-3. Copie **Client ID** e gere um **Client Secret** → grave em `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` no `.env` raiz.
-
-##### Onde colocar as credenciais
-
-Tudo vai em **um único `.env` na raiz do projeto** (mesmo nível do `docker-compose.yml`). O Compose carrega esse arquivo explicitamente via `env_file: ./.env` na service `api`, então as variáveis chegam ao container Node sem precisar listar cada uma em `environment:`.
-
-```bash
-GOOGLE_CLIENT_ID=...apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=GOCSPX-...
-GOOGLE_CALLBACK_URL=http://localhost:3000/auth/oauth/google/callback
-
-GITHUB_CLIENT_ID=Ov23li...
-GITHUB_CLIENT_SECRET=...
-GITHUB_CALLBACK_URL=http://localhost:3000/auth/oauth/github/callback
-
-OAUTH_SUCCESS_REDIRECT=http://localhost:3000/auth/success
-```
-
-Em desenvolvimento sem Docker (rodando `npm run dev` na pasta `api/`), use um `api/.env` separado **ou** crie um symlink do `.env` raiz: `cd api && mklink .env ..\.env` (Windows) / `cd api && ln -s ../.env .env` (Linux/Mac).
 
 ### `POST /urls/analyze`
 
