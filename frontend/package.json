@@ -1,0 +1,21 @@
+{
+  "name": "sentinela-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Frontend React + Vite do Sentinela APL (landing page + integração com a API REST).",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "echo 'sem linter configurado ainda' && exit 0"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "vite": "^5.4.0"
+  }
+}

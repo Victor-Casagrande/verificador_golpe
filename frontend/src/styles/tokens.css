@@ -1,0 +1,91 @@
+/*
+ * Design tokens do Sentinela.
+ * Cores extraídas do protótipo Figma (tema escuro com accent ciano).
+ * Mantemos tudo em CSS custom properties para que os componentes consumam
+ * via var(--token) e seja trivial trocar tema no futuro.
+ */
+
+:root {
+  /* === Cores base === */
+  --color-bg: #07090f;
+  --color-bg-elevated: #0d1220;
+  --color-surface: #111728;
+  --color-surface-hover: #161e33;
+  --color-surface-strong: #1a2238;
+  --color-border: #1f2a44;
+  --color-border-strong: #2a3656;
+
+  /* === Texto === */
+  --color-text: #e6ecf5;
+  --color-text-muted: #8a96ad;
+  --color-text-dim: #5d6a83;
+  --color-text-inverse: #07090f;
+
+  /* === Accent (ciano do Figma) === */
+  --color-accent: #22d3ee;
+  --color-accent-strong: #06b6d4;
+  --color-accent-soft: rgba(34, 211, 238, 0.12);
+  --color-accent-ring: rgba(34, 211, 238, 0.35);
+
+  /* === Feedback === */
+  --color-danger: #ef4444;
+  --color-warning: #f59e0b;
+  --color-success: #22c55e;
+
+  /* === Tipografia === */
+  --font-sans:
+    "Inter", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial,
+    sans-serif;
+  --font-mono: "JetBrains Mono", "Consolas", "Menlo", monospace;
+
+  --fs-xs: 0.75rem;
+  --fs-sm: 0.875rem;
+  --fs-base: 1rem;
+  --fs-lg: 1.125rem;
+  --fs-xl: 1.375rem;
+  --fs-2xl: 1.75rem;
+  --fs-3xl: 2.25rem;
+  --fs-4xl: 3rem;
+  --fs-5xl: 4rem;
+
+  /* === Espaçamento (escala 4px) === */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-20: 5rem;
+  --space-24: 6rem;
+
+  /* === Bordas / raios === */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+
+  /* === Sombras / glows === */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 20px 40px rgba(0, 0, 0, 0.55);
+  --shadow-accent: 0 0 30px rgba(34, 211, 238, 0.18);
+  --glow-card: radial-gradient(
+    1200px circle at 50% -10%,
+    rgba(34, 211, 238, 0.08),
+    transparent 60%
+  );
+
+  /* === Layout === */
+  --container-max: 1180px;
+  --navbar-height: 72px;
+
+  /* === Transições === */
+  --t-fast: 120ms ease;
+  --t-base: 180ms ease;
+  --t-slow: 320ms ease;
+}

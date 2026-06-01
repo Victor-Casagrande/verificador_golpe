@@ -1,0 +1,196 @@
+.section { position: relative; }
+
+.inner {
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  gap: var(--space-12);
+  align-items: center;
+}
+
+.copy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 540px;
+}
+
+.title {
+  font-size: clamp(1.75rem, 3vw, var(--fs-3xl));
+  letter-spacing: -0.015em;
+}
+
+.subtitle {
+  color: var(--color-text-muted);
+  font-size: var(--fs-base);
+}
+
+.bullets {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.bullet {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+
+.bulletIcon {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background-color: var(--color-accent-soft);
+  color: var(--color-accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.bulletIcon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.bulletTitle {
+  color: var(--color-text);
+  font-size: var(--fs-base);
+  font-weight: 600;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.bulletDesc {
+  color: var(--color-text-muted);
+  font-size: var(--fs-sm);
+}
+
+.cta {
+  margin-top: var(--space-4);
+}
+
+/* ---- Visual à direita: mock de browser bloqueado ---- */
+
+.visual {
+  display: flex;
+  justify-content: center;
+}
+
+.browserFrame {
+  width: 100%;
+  max-width: 460px;
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-lg), 0 0 40px rgba(239, 68, 68, 0.1);
+}
+
+.browserBar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background-color: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.miniDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background-color: var(--color-border-strong);
+}
+
+.addressBar {
+  flex: 1;
+  margin-left: var(--space-2);
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 4px 10px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.alertScreen {
+  background: linear-gradient(180deg, rgba(220, 38, 38, 0.95), rgba(153, 27, 27, 0.95));
+  color: white;
+  padding: var(--space-10) var(--space-6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  text-align: center;
+  min-height: 280px;
+}
+
+.warnIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.18);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--fs-xl);
+  font-weight: 800;
+}
+
+.warnTitle {
+  font-size: var(--fs-lg);
+  letter-spacing: 0.08em;
+}
+
+.warnStatus {
+  font-size: var(--fs-xs);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-weight: 700;
+  background-color: rgba(0, 0, 0, 0.25);
+  padding: 0.3rem 0.7rem;
+  border-radius: var(--radius-full);
+}
+
+.warnReason {
+  font-size: var(--fs-sm);
+  color: rgba(255, 255, 255, 0.85);
+  max-width: 32ch;
+}
+
+.warnActions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.warnBtn {
+  background-color: white;
+  color: #b91c1c;
+  font-weight: 700;
+  padding: 0.45rem 0.9rem;
+  border-radius: var(--radius-md);
+  font-size: var(--fs-xs);
+}
+
+.warnBtnGhost {
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  color: white;
+  padding: 0.45rem 0.9rem;
+  border-radius: var(--radius-md);
+  font-size: var(--fs-xs);
+}
+
+@media (max-width: 880px) {
+  .inner { grid-template-columns: 1fr; }
+  .visual { order: -1; }
+}
