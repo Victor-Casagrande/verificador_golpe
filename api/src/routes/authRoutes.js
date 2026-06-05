@@ -6,6 +6,7 @@ const {
   validateRegister,
   validateLogin,
 } = require("../middlewares/authValidationMiddleware");
+const { authLimiter } = require("../middlewares/rateLimitMiddleware");
 
 /**
  * Página de aterrissagem após o callback OAuth quando OAUTH_SUCCESS_REDIRECT
@@ -168,8 +169,8 @@ router.get("/success", (req, res) => {
 </html>`);
 });
 
-router.post("/register", validateRegister, authController.register);
-router.post("/login", validateLogin, authController.login);
+router.post("/register", authLimiter, validateRegister, authController.register);
+router.post("/login", authLimiter, validateLogin, authController.login);
 router.use("/oauth", oauthRoutes);
 
 module.exports = router;

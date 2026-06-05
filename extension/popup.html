@@ -8,7 +8,7 @@
   </head>
   <body>
     <div class="container">
-      <div id="login-view" class="view">
+      <div id="login-view" class="view hidden">
         <div class="header">
           <img
             src="icon.png"
@@ -56,6 +56,19 @@
         </div>
       </div>
     </div>
+    <!-- Modal de Denúncia -->
+    <div id="report-modal" class="modal hidden">
+      <div class="modal-content">
+        <h3>Denunciar Página</h3>
+        <p id="report-domain">Domínio: </p>
+        <textarea id="report-reason" rows="3" placeholder="Descreva rapidamente o motivo..."></textarea>
+        <div class="modal-actions">
+          <button id="btn-cancel-report" class="btn btn-text">Cancelar</button>
+          <button id="btn-confirm-report" class="btn warning">Confirmar Denúncia</button>
+        </div>
+      </div>
+    </div>
+    
     <script src="popup.js"></script>
   </body>
 </html>

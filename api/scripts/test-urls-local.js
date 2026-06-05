@@ -1,92 +1,81 @@
 #!/usr/bin/env node
-/**
- * Script para testar verificação de URLs contra a API local.
- * Uso: node scripts/test-urls-local.js
- *
- * Requer API em execução (npm run dev ou docker compose up).
- */
-const fs = require("fs");
-const path = require("path");
-
-// URL base fixa da API
 const baseUrl = "http://localhost:3000";
 
-const fixturesPath = path.join(__dirname, "../tests/fixtures/test-urls.json");
-const fixtures = JSON.parse(fs.readFileSync(fixturesPath, "utf8"));
-
 const analyzeUrl = async (url, accessibilityReport = []) => {
-  const res = await fetch(`${baseUrl}/urls/analyze`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      url,
-      accessibility_report: accessibilityReport,
-    }),
-  });
+  const payload = {
+    url,
+    accessibility_report: accessibilityReport,
+  };
+  
+  try {
+    const res = await fetch(`${baseUrl}/urls/analyze`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
 
-  const body = await res.json().catch(() => ({}));
-  return { status: res.status, body };
-};
-
-const runGroup = async (label, urls, extra = {}) => {
-  console.log(`\n=== ${label} ===`);
-
-  for (const url of urls) {
-    const { status, body } = await analyzeUrl(url, extra.accessibility_report);
-
-    const security = body.security || {};
-    const icon = security.is_danger ? "⚠️" : "✅";
-
-    console.log(
-      `${icon} [${status}] ${url}\n` +
-        `    status: ${security.status || body.error?.message || "—"}\n` +
-        `    nota: ${body.accessibility?.quality_rating ?? "—"}/100 | ` +
-        `penalty: ${body.accessibility?.accessibility_score ?? "—"} | ` +
-        `axe: ${body.accessibility?.axe_source ?? "—"}`,
-    );
+    const body = await res.json().catch(() => ({}));
+    console.log(JSON.stringify(body, null, 2));
+    return { status: res.status, body };
+  } catch (error) {
+    console.error("Erro na requisição:", error.message);
   }
 };
 
 const main = async () => {
-  console.log(`Sentinela — teste local de URLs\nAPI: ${baseUrl}`);
-
+  console.log(`Verificando API em: ${baseUrl}`);
   try {
     const health = await fetch(`${baseUrl}/api/status`);
-
     if (!health.ok) {
-      console.error(
-        "API não respondeu ao health check. Suba o servidor antes de rodar este script.",
-      );
+      console.error("API não respondeu ao health check com sucesso.");
       process.exit(1);
     }
   } catch {
-    console.error(
-      `Não foi possível conectar em ${baseUrl}. Execute: npm run dev`,
-    );
+    console.error(`Não foi possível conectar em ${baseUrl}. Certifique-se que o docker-compose ou npm run dev está rodando.`);
     process.exit(1);
   }
 
-  await runGroup("URLs seguras (esperado: Seguro)", fixtures.safe);
+  console.log("\n=== Cenário A: Phishing Crítico ===");
+  // URL formatada para acionar as heurísticas estáticas negativas (uso de IP direto, excesso de hífens, palavras como 'secure-login' e 'update')
+  await analyzeUrl("http://192.168.1.1/secure-login-update-account-info-admin-verify-secure-login");
 
-  await runGroup(
-    "URLs suspeitas — heurística local",
-    fixtures.heuristic_suspicious,
-  );
-
-  await runGroup("URLs inválidas", fixtures.invalid);
-
-  await runGroup(
-    "Com relatório de acessibilidade (fixture)",
-    [fixtures.safe[0]],
+  console.log("\n=== Cenário B: Acessibilidade Ruim ===");
+  // URL simulada que retorne falhas graves de contraste e falta de atributos ARIA
+  const badA11yReport = [
     {
-      accessibility_report: fixtures.sample_accessibility_violations,
+      id: "color-contrast",
+      impact: "critical",
+      tags: ["cat.color", "wcag2aa", "wcag143"],
+      description: "Elements must have sufficient color contrast",
+      nodes: [
+        { failureSummary: "Fix any of the following: Element has insufficient color contrast of 1.1 (foreground color: #ffffff, background color: #f0f0f0, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1" },
+        { failureSummary: "Fix any of the following: Element has insufficient color contrast of 1.1 (foreground color: #ffffff, background color: #f0f0f0, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1" }
+      ]
     },
-  );
+    {
+      id: "aria-roles",
+      impact: "serious",
+      tags: ["cat.aria", "wcag2a", "wcag412"],
+      description: "ARIA roles used must conform to valid values",
+      nodes: [
+        { failureSummary: "Fix any of the following: ARIA role is not valid" }
+      ]
+    },
+    {
+      id: "button-name",
+      impact: "critical",
+      tags: ["cat.name-role-value", "wcag2a", "wcag412"],
+      description: "Buttons must have discernible text",
+      nodes: [
+        { failureSummary: "Fix any of the following: Element does not have text that is visible to screen readers" }
+      ]
+    }
+  ];
+  await analyzeUrl("http://example.com/bad-a11y-test", badA11yReport);
 
-  console.log("\nConcluído.");
+  console.log("\n=== Cenário C: Seguro ===");
+  // URL limpa e conhecida
+  await analyzeUrl("https://github.com");
 };
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+main().catch(console.error);

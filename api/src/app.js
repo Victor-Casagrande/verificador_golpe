@@ -11,7 +11,7 @@ const reportRoutes = require('./routes/reportRoutes');
 const rankingRoutes = require('./routes/rankingRoutes');
 const urlScoreRoutes = require('./routes/urlScoreRoutes');
 const errorHandlerMiddleware = require('./middlewares/errorHandlerMiddleware');
-const rateLimitMiddleware = require('./middlewares/rateLimitMiddleware');
+const { globalLimiter } = require('./middlewares/rateLimitMiddleware');
 const securityAnalyticsRoutes = require('./routes/securityAnalyticsRoutes');
 const accessibilityAnalyticsRoutes = require('./routes/accessibilityAnalyticsRoutes');
 const db = require('./config/database');
@@ -33,7 +33,7 @@ app.use(
 app.use(cors());
 app.use(express.json({ limit: '5mb'}));
 app.use(express.urlencoded({ extended: true, limit: '1mb' })); 
-app.use(rateLimitMiddleware);
+app.use(globalLimiter);
 
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, { explorer: true }));
 app.get('/api/docs.json', (req, res) => res.json(swaggerSpec));

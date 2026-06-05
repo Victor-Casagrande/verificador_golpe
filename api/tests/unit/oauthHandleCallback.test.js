@@ -81,7 +81,7 @@ describe("oauthService.handleCallback — fluxo completo", () => {
       throw new Error("URL inesperada: " + url);
     };
 
-    const state = oauthService.createOAuthState("github");
+    const { state } = oauthService.createOAuthState("github");
     const result = await oauthService.handleCallback("github", { code: "abc", state });
 
     assert.equal(result.user.id, 42);
@@ -126,9 +126,10 @@ describe("oauthService.handleCallback — fluxo completo", () => {
       throw new Error("URL inesperada");
     };
 
+    const { state } = oauthService.createOAuthState("github");
     const result = await oauthService.handleCallback("github", {
       code: "x",
-      state: oauthService.createOAuthState("github"),
+      state,
     });
     assert.equal(result.user.id, 10);
     assert.equal(result.user.email, "ja@foo.com");
@@ -174,9 +175,10 @@ describe("oauthService.handleCallback — fluxo completo", () => {
       throw new Error("URL inesperada: " + url);
     };
 
+    const { state } = oauthService.createOAuthState("google");
     const result = await oauthService.handleCallback("google", {
       code: "x",
-      state: oauthService.createOAuthState("google"),
+      state,
     });
     assert.equal(linkCalled, true, "linkAccount precisa rodar");
     assert.equal(result.user.id, 7);
@@ -201,12 +203,13 @@ describe("oauthService.handleCallback — fluxo completo", () => {
       throw new Error("URL inesperada");
     };
 
+    const { state } = oauthService.createOAuthState("github");
     await assert.rejects(
       oauthService.handleCallback("github", {
         code: "x",
-        state: oauthService.createOAuthState("github"),
+        state,
       }),
-      /HTTP 503/,
+      /HTTP 503/
     );
   });
 
@@ -215,5 +218,70 @@ describe("oauthService.handleCallback — fluxo completo", () => {
     assert.equal(formatted.sucesso, true);
     assert.equal(formatted.token, "t");
     assert.deepEqual(formatted.user, { id: 1 });
+  });
+
+  // Novos testes solicitados pelo usuário
+  it("Cenário A (Segurança): falha na validação do parâmetro state", async () => {
+    await assert.rejects(
+      oauthService.handleCallback("github", {
+        code: "fake_code",
+        state: "state_invalido_ou_forjado",
+      }),
+      /state|invali/i // Expressão regular genérica para cobrir "Invalid state" ou falhas relativas ao state
+    );
+  });
+
+  it("Cenário B (Resiliência): simula erro 500 no token exchange (não deve derrubar o node)", async () => {
+    global.fetch = async (url) => {
+      if (url.includes("access_token") || url.includes("token")) {
+        return { ok: false, status: 500, json: async () => ({ error: "Internal Server Error" }) };
+      }
+      throw new Error("URL inesperada: " + url);
+    };
+
+    const { state: validState } = oauthService.createOAuthState("github");
+    
+    // O erro deve ser propagado como AppError (ou Error) e não causar crash (uncaughtException)
+    await assert.rejects(
+      oauthService.handleCallback("github", { code: "fake_code", state: validState }),
+      (err) => {
+        // Valida que o erro foi capturado e retornado adequadamente (geralmente conterá 500 ou mensagem da API)
+        return err.message.includes("500") || err.message.includes("Token") || err.status === 500 || err.statusCode === 500 || err.message.includes("HTTP");
+      }
+    );
+  });
+
+  it("Cenário C (Sucesso E2E Mockado): perfil falso gera JWT correto", async () => {
+    restoreOauthRepo = stubRepo(oauthRepository, {
+      findByProvider: async () => null,
+      linkAccount: async () => ({ id: 99 }),
+      findProvidersByUserId: async () => [{ provider: "github" }],
+    });
+    restoreUserRepo = stubRepo(userRepository, {
+      findByEmail: async () => null,
+      create: async () => ({ id: 99, name: "Teste E2E", email: "e2e@mock.com" }),
+    });
+
+    global.fetch = async (url) => {
+      if (url.includes("access_token")) return tokenResponse("fake_access_token_e2e");
+      if (url.includes("api.github.com/user")) {
+        return {
+          ok: true,
+          json: async () => ({ id: 1010, login: "e2e_mock", email: "e2e@mock.com" }),
+        };
+      }
+      throw new Error("URL inesperada: " + url);
+    };
+
+    const { state: validState } = oauthService.createOAuthState("github");
+    const result = await oauthService.handleCallback("github", { code: "valid_code", state: validState });
+
+    assert.equal(result.user.email, "e2e@mock.com");
+    
+    // Verifica se a função interna gerou o JWT
+    assert.ok(result.token, "O JWT deve ter sido gerado na resposta");
+    const decoded = verifyToken(result.token);
+    assert.equal(decoded.sub, 99);
+    assert.equal(decoded.email, "e2e@mock.com");
   });
 });

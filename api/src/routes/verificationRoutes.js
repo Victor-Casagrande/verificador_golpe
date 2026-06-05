@@ -5,9 +5,11 @@ const {
   validateVerificationRequest,
 } = require("../middlewares/validationMiddleware");
 const { optionalAuthenticate } = require("../middlewares/authMiddleware");
+const { analyzeLimiter } = require("../middlewares/rateLimitMiddleware");
 
 router.post(
   "/",
+  analyzeLimiter,
   optionalAuthenticate,
   validateVerificationRequest,
   verificationController.verifyUrl,

@@ -137,6 +137,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // --- AÇÃO: DENUNCIAR ---
+  const reportModal = document.getElementById("report-modal");
+  const reportReasonInput = document.getElementById("report-reason");
+  const reportDomainText = document.getElementById("report-domain");
+  let currentTabForReport = null;
+
   document.getElementById("btn-report").addEventListener("click", async () => {
     try {
       const [tab] = await chrome.tabs.query({
@@ -146,23 +151,43 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (!tab || !tab.url)
         return alert("Não é possível identificar a URL desta aba.");
 
-      const reason = prompt(
-        "Descreva rapidamente o motivo da denúncia para o domínio: " +
-          new URL(tab.url).hostname,
-      );
-      if (!reason) return;
+      currentTabForReport = tab;
+      reportDomainText.textContent = "Domínio: " + new URL(tab.url).hostname;
+      reportReasonInput.value = "";
+      reportModal.classList.remove("hidden");
+    } catch (err) {
+      console.error(err);
+      alert("Erro ao identificar a aba para denúncia.");
+    }
+  });
 
+  document.getElementById("btn-cancel-report").addEventListener("click", () => {
+    reportModal.classList.add("hidden");
+    currentTabForReport = null;
+  });
+
+  document.getElementById("btn-confirm-report").addEventListener("click", async () => {
+    if (!currentTabForReport) return;
+    
+    const reason = reportReasonInput.value.trim();
+    if (!reason) {
+      alert("Por favor, descreva o motivo da denúncia.");
+      return;
+    }
+
+    try {
       const res = await fetch(`${API_URL}/reports`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${jwtToken}`,
         },
-        body: JSON.stringify({ url: tab.url, reason }),
+        body: JSON.stringify({ url: currentTabForReport.url, reason }),
       });
 
       if (res.ok) {
         alert("Página denunciada com sucesso!");
+        reportModal.classList.add("hidden");
         loadRankings(); // Atualiza o ranking logo após a denúncia
       } else {
         alert("Falha ao enviar denúncia. Verifique sua conexão.");

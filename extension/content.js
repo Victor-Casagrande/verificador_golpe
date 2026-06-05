@@ -59,52 +59,31 @@ function createAlertOverlay(status, reason) {
 
 async function verifySiteAndAccessibility() {
   const currentUrl = window.location.href;
-  const apiUrl = await getApiUrl();
-  const endpoint = `${apiUrl}/urls/analyze`;
-
-  const controller = new AbortController();
-  const timeoutId = setTimeout(
-    () => controller.abort(),
-    SENTRY_CONFIG.TIMEOUT_MS,
-  );
 
   try {
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: currentUrl }),
-      signal: controller.signal,
-    });
+    // Delega a requisição para o background worker evitar bloqueios de CORS e CSP
+    chrome.runtime.sendMessage(
+      { action: "analyzeUrl", url: currentUrl },
+      (response) => {
+        if (!response || !response.success) {
+          console.error("Sentinela: Erro de comunicação com a extensão/API.", response?.error);
+          return;
+        }
 
-    clearTimeout(timeoutId);
+        const data = response.data;
 
-    if (!response.ok) {
-      console.error(
-        "Erro na comunicação com o servidor Sentinela. Código HTTP:",
-        response.status,
-      );
-      return;
-    }
-
-    const data = await response.json();
-
-    if (data.security && data.security.is_danger) {
-      createAlertOverlay(data.security.status, data.security.reason);
-    } else if (data.accessibility?.quality_rating !== undefined) {
-      console.info(
-        `Sentinela — nota de acessibilidade: ${data.accessibility.quality_rating}/100 ` +
-          `(${data.accessibility.violations_count} violações, fonte: ${data.accessibility.axe_source})`,
-      );
-    }
+        if (data.security && data.security.is_danger) {
+          createAlertOverlay(data.security.status, data.security.reason);
+        } else if (data.accessibility?.quality_rating !== undefined) {
+          console.info(
+            `Sentinela — nota de acessibilidade: ${data.accessibility.quality_rating}/100 ` +
+            `(${data.accessibility.violations_count} violações)`
+          );
+        }
+      }
+    );
   } catch (error) {
-    clearTimeout(timeoutId);
-    if (error.name === "AbortError") {
-      console.error(
-        `Sentinela: Servidor demorou mais de ${SENTRY_CONFIG.TIMEOUT_MS / 1000}s. Cancelado.`,
-      );
-    } else {
-      console.error("Sentinela: Falha na verificação de rede:", error);
-    }
+    console.error("Sentinela: Falha na comunicação das mensagens:", error);
   }
 }
 
