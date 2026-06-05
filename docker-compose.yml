@@ -54,7 +54,6 @@ services:
       OAUTH_SUCCESS_REDIRECT: ${OAUTH_SUCCESS_REDIRECT:-http://localhost:3000/auth/success}
       AXE_ENABLED: ${AXE_ENABLED:-true}
       AXE_TIMEOUT_MS: ${AXE_TIMEOUT_MS:-45000}
-      PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
     depends_on:
       db:
         condition: service_healthy
