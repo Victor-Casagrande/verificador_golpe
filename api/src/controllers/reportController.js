@@ -1,4 +1,8 @@
 const reportService = require("../services/reportService");
+const NodeCache = require("node-cache");
+
+const rankingCache = new NodeCache({ stdTTL: 300 }); // 5 minutes
+const pendingRequests = new Map();
 
 const createReport = async (req, res, next) => {
   try {
@@ -13,16 +17,39 @@ const getWorstAccessibilityRankings = async (req, res, next) => {
   try {
     const limit = Math.min(parseInt(req.query.limit, 10) || 10, 50);
     const min_analyses = parseInt(req.query.min_analyses, 10) || 1;
-    const rankings = await reportService.getWorstAccessibilityRankings({
+    
+    const cacheKey = `worst_accessibility_${limit}_${min_analyses}`;
+    const cachedRankings = rankingCache.get(cacheKey);
+    if (cachedRankings) {
+      return res.status(200).json(cachedRankings);
+    }
+
+    if (pendingRequests.has(cacheKey)) {
+      const responseData = await pendingRequests.get(cacheKey);
+      return res.status(200).json(responseData);
+    }
+
+    const fetchPromise = reportService.getWorstAccessibilityRankings({
       limit,
       min_analyses,
+    }).then(rankings => {
+      const responseData = {
+        sucesso: true,
+        description: "Sites com piores notas (quality_rating menor = pior acessibilidade)",
+        rankings,
+      };
+      rankingCache.set(cacheKey, responseData);
+      pendingRequests.delete(cacheKey);
+      return responseData;
+    }).catch(err => {
+      pendingRequests.delete(cacheKey);
+      throw err;
     });
-    return res.status(200).json({
-      sucesso: true,
-      description:
-        "Sites com piores notas (quality_rating menor = pior acessibilidade)",
-      rankings,
-    });
+
+    pendingRequests.set(cacheKey, fetchPromise);
+    const responseData = await fetchPromise;
+    
+    return res.status(200).json(responseData);
   } catch (error) {
     next(error);
   }
@@ -32,16 +59,39 @@ const getBestAccessibilityRankings = async (req, res, next) => {
   try {
     const limit = Math.min(parseInt(req.query.limit, 10) || 10, 50);
     const min_analyses = parseInt(req.query.min_analyses, 10) || 1;
-    const rankings = await reportService.getBestAccessibilityRankings({
+
+    const cacheKey = `best_accessibility_${limit}_${min_analyses}`;
+    const cachedRankings = rankingCache.get(cacheKey);
+    if (cachedRankings) {
+      return res.status(200).json(cachedRankings);
+    }
+
+    if (pendingRequests.has(cacheKey)) {
+      const responseData = await pendingRequests.get(cacheKey);
+      return res.status(200).json(responseData);
+    }
+
+    const fetchPromise = reportService.getBestAccessibilityRankings({
       limit,
       min_analyses,
+    }).then(rankings => {
+      const responseData = {
+        sucesso: true,
+        description: "Sites com melhores notas (quality_rating maior = melhor acessibilidade)",
+        rankings,
+      };
+      rankingCache.set(cacheKey, responseData);
+      pendingRequests.delete(cacheKey);
+      return responseData;
+    }).catch(err => {
+      pendingRequests.delete(cacheKey);
+      throw err;
     });
-    return res.status(200).json({
-      sucesso: true,
-      description:
-        "Sites com melhores notas (quality_rating maior = melhor acessibilidade)",
-      rankings,
-    });
+
+    pendingRequests.set(cacheKey, fetchPromise);
+    const responseData = await fetchPromise;
+    
+    return res.status(200).json(responseData);
   } catch (error) {
     next(error);
   }
@@ -50,8 +100,32 @@ const getBestAccessibilityRankings = async (req, res, next) => {
 const getMostReportedSites = async (req, res, next) => {
   try {
     const limit = Math.min(parseInt(req.query.limit, 10) || 10, 50);
-    const rankings = await reportService.getMostReportedSites({ limit });
-    return res.status(200).json({ sucesso: true, rankings });
+    
+    const cacheKey = `most_reported_${limit}`;
+    const cachedRankings = rankingCache.get(cacheKey);
+    if (cachedRankings) {
+      return res.status(200).json(cachedRankings);
+    }
+
+    if (pendingRequests.has(cacheKey)) {
+      const responseData = await pendingRequests.get(cacheKey);
+      return res.status(200).json(responseData);
+    }
+
+    const fetchPromise = reportService.getMostReportedSites({ limit }).then(rankings => {
+      const responseData = { sucesso: true, rankings };
+      rankingCache.set(cacheKey, responseData);
+      pendingRequests.delete(cacheKey);
+      return responseData;
+    }).catch(err => {
+      pendingRequests.delete(cacheKey);
+      throw err;
+    });
+
+    pendingRequests.set(cacheKey, fetchPromise);
+    const responseData = await fetchPromise;
+    
+    return res.status(200).json(responseData);
   } catch (error) {
     next(error);
   }
@@ -62,4 +136,5 @@ module.exports = {
   getWorstAccessibilityRankings,
   getBestAccessibilityRankings,
   getMostReportedSites,
+  rankingCache, // Exported for testing purposes to flush if needed
 };
