@@ -48,6 +48,7 @@ jobs:
           psql -h localhost -U postgres -d sentinela -f db/init/02-auth-history-reports.sql
           psql -h localhost -U postgres -d sentinela -f db/init/03-oauth.sql
           psql -h localhost -U postgres -d sentinela -f db/init/04-axe-analytics.sql
+          psql -h localhost -U postgres -d sentinela -f db/init/05-blacklist-cleanup-extensions.sql
 
       - name: Executar testes da API
         working-directory: ./api

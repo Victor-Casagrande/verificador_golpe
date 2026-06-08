@@ -4,12 +4,18 @@ const assert = require("node:assert/strict");
 process.env.JWT_SECRET = process.env.JWT_SECRET || "test_jwt_secret_exchange";
 process.env.GITHUB_CLIENT_ID = "gh-id";
 process.env.GITHUB_CLIENT_SECRET = "gh-secret";
-process.env.GITHUB_CALLBACK_URL = "http://localhost:3000/auth/oauth/github/callback";
+process.env.GITHUB_CALLBACK_URL =
+  "http://localhost:3000/auth/oauth/github/callback";
 
 const oauthService = require("../../src/services/oauthService");
 const AppError = require("../../src/utils/AppError");
 
-const fakeFetchResponse = ({ ok = true, status = 200, json = {}, throwOnJson = false } = {}) => ({
+const fakeFetchResponse = ({
+  ok = true,
+  status = 200,
+  json = {},
+  throwOnJson = false,
+} = {}) => ({
   ok,
   status,
   json: async () => {
@@ -35,7 +41,7 @@ describe("oauthService.exchangeCodeForToken (via handleCallback wiring)", () => 
     await assert.rejects(
       oauthService.handleCallback("github", {
         code: "any",
-        state: oauthService.createOAuthState("github"),
+        state: oauthService.createOAuthState("github").state,
       }),
       (err) => err instanceof AppError && err.status === 502,
     );
@@ -49,7 +55,7 @@ describe("oauthService.exchangeCodeForToken (via handleCallback wiring)", () => 
     await assert.rejects(
       oauthService.handleCallback("github", {
         code: "any",
-        state: oauthService.createOAuthState("github"),
+        state: oauthService.createOAuthState("github").state,
       }),
       (err) => err instanceof AppError && err.status === 502,
     );
@@ -61,7 +67,7 @@ describe("oauthService.exchangeCodeForToken (via handleCallback wiring)", () => 
     await assert.rejects(
       oauthService.handleCallback("github", {
         code: "any",
-        state: oauthService.createOAuthState("github"),
+        state: oauthService.createOAuthState("github").state,
       }),
       (err) => err instanceof AppError && err.status === 502,
     );
@@ -70,13 +76,16 @@ describe("oauthService.exchangeCodeForToken (via handleCallback wiring)", () => 
   it("propaga AppError 502 quando body inclui campo error", async () => {
     global.fetch = async () =>
       fakeFetchResponse({
-        json: { error: "bad_verification_code", error_description: "code expirou" },
+        json: {
+          error: "bad_verification_code",
+          error_description: "code expirou",
+        },
       });
 
     await assert.rejects(
       oauthService.handleCallback("github", {
         code: "any",
-        state: oauthService.createOAuthState("github"),
+        state: oauthService.createOAuthState("github").state,
       }),
       (err) => err instanceof AppError && /code expirou/i.test(err.message),
     );
@@ -86,7 +95,7 @@ describe("oauthService.exchangeCodeForToken (via handleCallback wiring)", () => 
     await assert.rejects(
       oauthService.handleCallback("github", {
         code: undefined,
-        state: oauthService.createOAuthState("github"),
+        state: oauthService.createOAuthState("github").state,
       }),
       (err) => err instanceof AppError && err.status === 400,
     );
