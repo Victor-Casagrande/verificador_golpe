@@ -24,14 +24,18 @@ const scheduleCleanup = () => {
         `[CRON] Limpeza de url_analyses: ${historyResult.rowCount} registros antigos removidos.`,
       );
 
-      // Se implementado uma tabela de invalidação de tokens (blacklist) no futuro,
-      // a rotina entraria aqui para apagar tokens que já passaram da data de expiração.
-      /*
       const tokenResult = await client.query(`
         DELETE FROM jwt_blacklist WHERE expires_at < NOW();
       `);
       logger.info(`[CRON] Limpeza de jwt_blacklist: ${tokenResult.rowCount} tokens expirados removidos.`);
-      */
+
+      const inactiveUsersResult = await client.query(`
+        DELETE FROM users 
+        WHERE created_at < NOW() - INTERVAL '1 year' 
+        AND id NOT IN (SELECT DISTINCT user_id FROM url_analyses WHERE user_id IS NOT NULL) 
+        AND id NOT IN (SELECT DISTINCT user_id FROM reports);
+      `);
+      logger.info(`[CRON] Limpeza de users (inativos): ${inactiveUsersResult.rowCount} contas inativas removidas.`);
 
       await client.query("COMMIT");
       logger.info("[CRON] Rotina de limpeza finalizada com sucesso.");

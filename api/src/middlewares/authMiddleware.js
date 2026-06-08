@@ -1,6 +1,8 @@
 const userRepository = require("../repositories/userRepository");
 const AppError = require("../utils/AppError");
 const { verifyToken } = require("../utils/jwt");
+const pool = require("../config/database");
+const crypto = require("crypto");
 
 // Extrai token Bearer
 const extractBearerToken = (req) => {
@@ -20,6 +22,12 @@ const authenticate = async (req, res, next) => {
 
     if (!token) {
       return next(new AppError("Token de autenticação não informado.", 401));
+    }
+
+    const tokenSignature = token.split('.')[2] || crypto.createHash('sha256').update(token).digest('hex');
+    const blacklistCheck = await pool.query('SELECT id FROM jwt_blacklist WHERE token_signature = $1', [tokenSignature]);
+    if (blacklistCheck.rowCount > 0) {
+      return next(new AppError('Token revogado. Faça login novamente.', 401));
     }
 
     const decoded = verifyToken(token);
@@ -51,6 +59,12 @@ const optionalAuthenticate = async (req, res, next) => {
     const token = extractBearerToken(req);
 
     if (!token) {
+      return next();
+    }
+
+    const tokenSignature = token.split('.')[2] || crypto.createHash('sha256').update(token).digest('hex');
+    const blacklistCheck = await pool.query('SELECT id FROM jwt_blacklist WHERE token_signature = $1', [tokenSignature]);
+    if (blacklistCheck.rowCount > 0) {
       return next();
     }
 
