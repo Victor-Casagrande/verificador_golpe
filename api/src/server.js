@@ -4,7 +4,11 @@ require("./config/database");
 
 const app = require("./app");
 const axeService = require("./services/axeService");
+const cleanupJob = require("./jobs/dbCleanup");
+
 const PORT = process.env.PORT || 3000;
+
+cleanupJob.scheduleCleanup();
 
 const server = app.listen(PORT, () => {
   console.log(`Servidor SentryVZN rodando na porta: ${PORT}`);
