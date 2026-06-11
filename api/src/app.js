@@ -37,7 +37,12 @@ const corsOptions = {
       process.env.FRONTEND_URL
     ];
     
-    if (!origin || allowedOrigins.includes(origin) || origin.startsWith('chrome-extension://')) {
+    if (
+      !origin || 
+      allowedOrigins.includes(origin) || 
+      origin.startsWith('chrome-extension://') ||
+      origin.endsWith('.vercel.app') // Permite links de preview da Vercel
+    ) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
