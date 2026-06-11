@@ -67,6 +67,26 @@ const findBestAccessibilitySites = async ({
   return result.rows;
 };
 
+const findByUserId = async (userId, { limit = 20, offset = 0 } = {}) => {
+  const result = await db.query(
+    `SELECT id, url_analysis_id, url, report_type, comment, created_at
+       FROM reports
+      WHERE user_id = $1
+      ORDER BY created_at DESC
+      LIMIT $2 OFFSET $3`,
+    [userId, limit, offset],
+  );
+  return result.rows;
+};
+
+const countByUserId = async (userId) => {
+  const result = await db.query(
+    "SELECT COUNT(*)::int AS total FROM reports WHERE user_id = $1",
+    [userId],
+  );
+  return result.rows[0]?.total ?? 0;
+};
+
 const findReportStatsByUrl = async (limit = 10) => {
   const result = await db.query(
     `SELECT
@@ -87,6 +107,8 @@ const findReportStatsByUrl = async (limit = 10) => {
 module.exports = {
   VALID_REPORT_TYPES,
   create,
+  findByUserId,
+  countByUserId,
   findWorstAccessibilitySites,
   findBestAccessibilitySites,
   findReportStatsByUrl,

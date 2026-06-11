@@ -1,7 +1,7 @@
 /**
- * POST /reports — envia uma denúncia de uma análise.
+ * Endpoints de denúncias.
  */
-import { post } from "./client.js";
+import { get, post } from "./client.js";
 
 export const REPORT_TYPES = [
   { value: "false_positive", label: "Alerta incorreto (falso positivo)" },
@@ -21,3 +21,13 @@ export const createReport = ({ url, analysisId, reportType, comment }) =>
     },
     { auth: true },
   );
+
+/**
+ * GET /reports/mine — denúncias enviadas pelo usuário autenticado (paginado).
+ */
+export const getMyReports = ({ limit = 20, offset = 0 } = {}) => {
+  const params = new URLSearchParams();
+  params.set("limit", String(limit));
+  params.set("offset", String(offset));
+  return get(`/reports/mine?${params.toString()}`, { auth: true });
+};

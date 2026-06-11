@@ -9,17 +9,30 @@ const {
 const { authLimiter } = require("../middlewares/rateLimitMiddleware");
 
 /**
- * Página de aterrissagem após o callback OAuth quando OAUTH_SUCCESS_REDIRECT
- * aponta para este endpoint. Responsabilidades:
+ * O fluxo OAuth abre estas rotas em um popup iniciado pelo frontend, que está
+ * em outra origem (ex.: :5173 vs API :3000). A COOP padrão do helmet
+ * (`same-origin`) isola o popup e zera `window.opener`, impedindo a entrega
+ * do token via `postMessage` — daí o "redirecionando" que nunca completava.
+ * Relaxamos a COOP apenas para o namespace /auth para preservar o opener.
+ */
+router.use((req, res, next) => {
+  res.setHeader("Cross-Origin-Opener-Policy", "unsafe-none");
+  next();
+});
+
+/**
+ * Página de aterrissagem (ponte) após o callback OAuth, usada quando
+ * OAUTH_SUCCESS_REDIRECT aponta para este endpoint.
  *
- *   1. Extrair `token` (JWT) e/ou `error` da query string.
- *   2. Exibir o token de forma copiável quando o usuário concluiu o login
- *      manualmente (fluxo navegador comum, sem extensão escutando).
- *   3. Notificar uma janela pai via `window.opener.postMessage(...)` para
- *      fluxos em popup (frontend SPA aguardando a resposta).
- *   4. Notificar a extensão Sentinela via `chrome.runtime.sendMessage` quando
- *      o `extension_id` for conhecido (passado por query string opcional).
- *   5. Em erro, exibir mensagem amigável em vez de página em branco.
+ * Em produção esta página NÃO exibe o JWT: ela é apenas uma ponte invisível
+ * que entrega o token a quem iniciou o login e se fecha sozinha.
+ *
+ *   1. Extrai `token` (JWT) e/ou `error` da query string.
+ *   2. Entrega o resultado a quem abriu o popup via
+ *      `window.opener.postMessage(...)` (frontend SPA) e à extensão via
+ *      `chrome.runtime.sendMessage` (quando disponível). O app, ao receber,
+ *      redireciona automaticamente para o dashboard.
+ *   3. Fecha a janela automaticamente. Em erro, mostra uma mensagem curta.
  */
 router.get("/success", (req, res) => {
   const token =
@@ -44,102 +57,32 @@ router.get("/success", (req, res) => {
     <style>
       :root { color-scheme: light; }
       body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; background-color: #f8fafc; color: #1e293b; margin: 0; padding: 20px; box-sizing: border-box; }
-      .box { text-align: center; padding: 40px; border-radius: 12px; background: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; max-width: 560px; width: 100%; }
-      .icon { font-size: 48px; margin-bottom: 16px; display: block; }
+      .box { text-align: center; padding: 40px; border-radius: 12px; background: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; max-width: 460px; width: 100%; }
+      .icon { font-size: 44px; margin-bottom: 12px; display: block; }
       h2 { margin: 0 0 8px 0; color: #0f172a; }
-      p { color: #64748b; margin: 0 0 16px 0; }
-      .token-row { display: flex; gap: 8px; align-items: stretch; margin-top: 16px; }
-      .token { flex: 1; font-family: 'Consolas', 'Monaco', monospace; font-size: 12px; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; background: #f1f5f9; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
-      button { padding: 10px 16px; border: none; border-radius: 8px; background: #2563eb; color: white; cursor: pointer; font-weight: 600; transition: background 120ms ease; min-width: 92px; }
-      button:hover { background: #1d4ed8; }
-      button.ok { background: #16a34a; }
-      button.fail { background: #b91c1c; }
+      p { color: #64748b; margin: 0; }
       .err { color: #b91c1c; }
+      .spinner { width: 26px; height: 26px; margin: 0 auto 16px; border: 3px solid #cbd5e1; border-right-color: transparent; border-radius: 50%; animation: spin .7s linear infinite; }
+      @keyframes spin { to { transform: rotate(360deg); } }
     </style>
   </head>
   <body>
-    <div class="box" id="root">
+    <div class="box">
       ${
         errorMsg
           ? `<span class="icon">⚠️</span>
-             <h2>Falha no login OAuth</h2>
+             <h2>Falha no login</h2>
              <p class="err">${safe(errorMsg)}</p>
-             <p>Feche esta aba e tente novamente a partir da extensão.</p>`
-          : `<span class="icon">✅</span>
-             <h2>Autenticação concluída</h2>
-             <p>Seu token de acesso foi gerado. A extensão deve recebê-lo
-                automaticamente. Caso esteja testando manualmente, copie-o abaixo:</p>
-             <div class="token-row">
-               <div class="token" id="tok">${safe(token) || "(token ausente)"}</div>
-               <button id="copyBtn" type="button" ${token ? "" : "disabled"}>Copiar</button>
-             </div>`
+             <p>Você já pode fechar esta janela e tentar novamente.</p>`
+          : `<div class="spinner"></div>
+             <h2>Login concluído</h2>
+             <p>Redirecionando você para o painel…</p>`
       }
     </div>
     <script>
-      // Botão de copiar JWT.
-      // Implementado em <script> (e não como onclick inline) porque:
-      //   1. Dentro de uma IIFE inline o objeto 'event' não existe, o que
-      //      derrubava o feedback "Copiado!" silenciosamente.
-      //   2. navigator.clipboard só funciona em contexto seguro (HTTPS ou
-      //      localhost). Precisamos de fallback com execCommand para uso em
-      //      ambiente local via IP ou HTTP plano.
-      (function () {
-        var btn = document.getElementById("copyBtn");
-        var tokEl = document.getElementById("tok");
-        if (!btn || !tokEl) return;
-
-        var revertTimer = null;
-        function flash(label, cls) {
-          var original = "Copiar";
-          btn.textContent = label;
-          if (cls) btn.classList.add(cls);
-          if (revertTimer) clearTimeout(revertTimer);
-          revertTimer = setTimeout(function () {
-            btn.textContent = original;
-            btn.classList.remove("ok", "fail");
-          }, 1500);
-        }
-
-        // Fallback compatível com browsers antigos ou contexto não-seguro.
-        function legacyCopy(text) {
-          var ta = document.createElement("textarea");
-          ta.value = text;
-          ta.setAttribute("readonly", "");
-          ta.style.position = "absolute";
-          ta.style.left = "-9999px";
-          document.body.appendChild(ta);
-          ta.select();
-          var ok = false;
-          try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
-          document.body.removeChild(ta);
-          return ok;
-        }
-
-        btn.addEventListener("click", function () {
-          var text = tokEl.textContent || "";
-          if (!text || text === "(token ausente)") {
-            flash("Sem token", "fail");
-            return;
-          }
-
-          var done = function (ok) {
-            flash(ok ? "Copiado!" : "Falha ao copiar", ok ? "ok" : "fail");
-          };
-
-          if (navigator.clipboard && window.isSecureContext) {
-            navigator.clipboard.writeText(text).then(
-              function () { done(true); },
-              function () { done(legacyCopy(text)); }
-            );
-          } else {
-            done(legacyCopy(text));
-          }
-        });
-      })();
-
-      // Propaga o resultado para qualquer escutador possível.
-      // - window.opener.postMessage: popups SPA que abriram esta página
-      // - chrome.runtime.sendMessage: extensão Sentinela (quando disponível)
+      // Ponte invisível: entrega o resultado a quem iniciou o login e fecha.
+      // - window.opener.postMessage: popup aberto pelo frontend (SPA)
+      // - chrome.runtime.sendMessage: extensão Sentinela (quando presente)
       (function () {
         var payload = {
           source: "sentinela-oauth",
@@ -159,9 +102,10 @@ router.get("/success", (req, res) => {
           }
         } catch (e) { /* extensão não instalada ou sem permissão, ignorar */ }
 
-        // Fecha a aba automaticamente quando aberta como popup pela extensão.
-        if (window.opener) {
-          setTimeout(function () { window.close(); }, 2000);
+        // Fecha o popup assim que o token é entregue (sem sucesso, mantém a
+        // mensagem de erro visível para o usuário).
+        if (window.opener && !${JSON.stringify(Boolean(errorMsg))}) {
+          setTimeout(function () { window.close(); }, 300);
         }
       })();
     </script>

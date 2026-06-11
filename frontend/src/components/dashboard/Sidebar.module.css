@@ -1,0 +1,225 @@
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  width: 248px;
+  flex-shrink: 0;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  background-color: var(--color-bg-elevated);
+  border-right: 1px solid var(--color-border);
+  padding: var(--space-5) var(--space-4);
+  gap: var(--space-6);
+  transition: width var(--t-base);
+}
+
+.collapsed {
+  width: 76px;
+}
+
+/* ===== Topo ===== */
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: 36px;
+}
+
+.collapsed .top {
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.brand {
+  overflow: hidden;
+}
+
+.toggle {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  background-color: transparent;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: border-color var(--t-base), background-color var(--t-base);
+}
+
+.toggle:hover {
+  border-color: var(--color-accent);
+  background-color: var(--color-surface-hover);
+}
+
+.toggle span {
+  display: block;
+  width: 16px;
+  height: 2px;
+  background-color: var(--color-text);
+  border-radius: 1px;
+}
+
+/* ===== Navegação ===== */
+.nav {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.item,
+.back {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background-color: transparent;
+  color: var(--color-text-muted);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  text-align: left;
+  transition:
+    background-color var(--t-base),
+    color var(--t-base),
+    border-color var(--t-base);
+}
+
+.item:hover,
+.back:hover {
+  background-color: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+.itemActive {
+  background-color: var(--color-accent-soft);
+  color: var(--color-accent);
+  border-color: var(--color-accent-ring);
+}
+
+.itemLocked {
+  opacity: 0.6;
+}
+
+.itemLocked:hover {
+  opacity: 1;
+}
+
+.lock {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  margin-left: auto;
+  color: var(--color-text-dim);
+  flex-shrink: 0;
+}
+
+.lock svg {
+  width: 15px;
+  height: 15px;
+}
+
+.collapsed .lock {
+  display: none;
+}
+
+.itemIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.itemIcon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.itemLabel {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.collapsed .itemLabel,
+.collapsed .footer {
+  display: none;
+}
+
+.collapsed .item,
+.collapsed .back {
+  justify-content: center;
+  padding: 0.7rem 0;
+}
+
+/* ===== Base ===== */
+.bottom {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.footer {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-3) var(--space-2) 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.footerName {
+  font-size: var(--fs-sm);
+  color: var(--color-text);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.footerHint {
+  font-size: var(--fs-xs);
+  color: var(--color-text-dim);
+}
+
+/* ===== Mobile: a sidebar vira um trilho fixo de ícones (76px) =====
+   Mantemos sempre o modo "rail" para não cobrir o conteúdo; os rótulos
+   ficam disponíveis via atributo title nos botões. O conteúdo do
+   Dashboard reserva 76px de padding à esquerda para compensar. */
+@media (max-width: 720px) {
+  .sidebar {
+    position: fixed;
+    z-index: 90;
+    left: 0;
+    top: 0;
+    width: 76px;
+    box-shadow: var(--shadow-lg);
+  }
+  .top {
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+  .itemLabel,
+  .footer,
+  .lock {
+    display: none;
+  }
+  .item,
+  .back {
+    justify-content: center;
+    padding: 0.7rem 0;
+  }
+}

@@ -19,7 +19,7 @@ import { useAuth } from "../context/AuthContext.jsx";
  * O scroll suave é tratado pela própria Navbar (scrollIntoView) e pelo
  * scroll-behavior:smooth do CSS global.
  */
-export default function Landing() {
+export default function Landing({ onEnterDashboard, onGuestAccess }) {
   const [loginOpen, setLoginOpen] = useState(false);
   const { isAuthenticated } = useAuth();
 
@@ -35,21 +35,31 @@ export default function Landing() {
     target?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
 
+  // Quando já autenticado, os CTAs principais levam direto ao painel em vez
+  // de reabrir o modal de login.
+  const primaryAction =
+    isAuthenticated && onEnterDashboard ? onEnterDashboard : openLogin;
+
   return (
     <>
-      <Navbar onLoginClick={openLogin} />
+      <Navbar
+        onLoginClick={openLogin}
+        onEnterDashboard={onEnterDashboard}
+        onGuestAccess={onGuestAccess}
+      />
 
       <main>
         <Hero
-          onPrimaryClick={openLogin}
+          onPrimaryClick={primaryAction}
           onSecondaryClick={scrollToFeatures}
+          onGuestAccess={onGuestAccess}
         />
         <ShowcaseRealtime />
         <Features />
         <ExtensionShowcase />
         <Testimonials />
         <FAQ />
-        <FinalCTA onPrimaryClick={openLogin} />
+        <FinalCTA onPrimaryClick={primaryAction} />
       </main>
 
       <Footer />

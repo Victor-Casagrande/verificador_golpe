@@ -16,7 +16,7 @@ const NAV_LINKS = [
   { id: "faq", label: "FAQ" },
 ];
 
-export default function Navbar({ onLoginClick }) {
+export default function Navbar({ onLoginClick, onEnterDashboard, onGuestAccess }) {
   const { isAuthenticated, user, logout } = useAuth();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -84,14 +84,26 @@ export default function Navbar({ onLoginClick }) {
               <span className={styles.userBadge} title={user?.email || ""}>
                 {user?.name?.split(" ")[0] || user?.email || "Conta"}
               </span>
+              {onEnterDashboard && (
+                <Button variant="primary" size="sm" onClick={onEnterDashboard}>
+                  Painel
+                </Button>
+              )}
               <Button variant="secondary" size="sm" onClick={logout}>
                 Sair
               </Button>
             </>
           ) : (
-            <Button variant="primary" size="sm" onClick={onLoginClick}>
-              Entrar
-            </Button>
+            <>
+              {onGuestAccess && (
+                <Button variant="ghost" size="sm" onClick={onGuestAccess}>
+                  Verificar URL
+                </Button>
+              )}
+              <Button variant="primary" size="sm" onClick={onLoginClick}>
+                Entrar
+              </Button>
+            </>
           )}
 
           <button

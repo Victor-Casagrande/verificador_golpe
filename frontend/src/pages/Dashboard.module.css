@@ -1,0 +1,24 @@
+.shell {
+  display: flex;
+  min-height: 100vh;
+  background-color: var(--color-bg);
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
+}
+
+.content {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: var(--space-8) var(--space-8) var(--space-16);
+}
+
+@media (max-width: 720px) {
+  .content {
+    padding: var(--space-5) var(--space-4) var(--space-12);
+    /* compensa a sidebar fixa recolhida (76px) no mobile */
+    padding-left: calc(76px + var(--space-4));
+  }
+}
