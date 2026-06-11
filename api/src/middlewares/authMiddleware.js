@@ -1,10 +1,8 @@
 const userRepository = require("../repositories/userRepository");
+const tokenBlacklistRepository = require("../repositories/tokenBlacklistRepository");
 const AppError = require("../utils/AppError");
 const { verifyToken } = require("../utils/jwt");
-const pool = require("../config/database");
-const crypto = require("crypto");
 
-// Extrai token Bearer
 const extractBearerToken = (req) => {
   const header = req.headers.authorization;
 
@@ -15,7 +13,6 @@ const extractBearerToken = (req) => {
   return header.slice(7).trim();
 };
 
-// Middleware obrigatório
 const authenticate = async (req, res, next) => {
   try {
     const token = extractBearerToken(req);
@@ -24,10 +21,8 @@ const authenticate = async (req, res, next) => {
       return next(new AppError("Token de autenticação não informado.", 401));
     }
 
-    const tokenSignature = token.split('.')[2] || crypto.createHash('sha256').update(token).digest('hex');
-    const blacklistCheck = await pool.query('SELECT id FROM jwt_blacklist WHERE token_signature = $1', [tokenSignature]);
-    if (blacklistCheck.rowCount > 0) {
-      return next(new AppError('Token revogado. Faça login novamente.', 401));
+    if (await tokenBlacklistRepository.isTokenRevoked(token)) {
+      return next(new AppError("Token revogado. Faça login novamente.", 401));
     }
 
     const decoded = verifyToken(token);
@@ -53,7 +48,6 @@ const authenticate = async (req, res, next) => {
   }
 };
 
-// Middleware opcional
 const optionalAuthenticate = async (req, res, next) => {
   try {
     const token = extractBearerToken(req);
@@ -62,9 +56,7 @@ const optionalAuthenticate = async (req, res, next) => {
       return next();
     }
 
-    const tokenSignature = token.split('.')[2] || crypto.createHash('sha256').update(token).digest('hex');
-    const blacklistCheck = await pool.query('SELECT id FROM jwt_blacklist WHERE token_signature = $1', [tokenSignature]);
-    if (blacklistCheck.rowCount > 0) {
+    if (await tokenBlacklistRepository.isTokenRevoked(token)) {
       return next();
     }
 

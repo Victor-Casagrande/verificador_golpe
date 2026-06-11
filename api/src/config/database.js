@@ -1,4 +1,3 @@
-const { Pool } = require("pg");
 require("dotenv").config();
 
 /**
@@ -10,7 +9,7 @@ require("dotenv").config();
  *
  * Resiliência:
  *   - Atualizamos uma flag interna (`available`) a cada query bem-sucedida/falha,
- *     para que o resto da aplicação consiga consultar o estado sem disparar SQL.
+ *     para que o resto da aplicação consiga consultar o estado sem disparar o SQL.
  *   - Tratamos `pool.on('error')` (clientes ociosos com conexão perdida) para
  *     que uma queda transitória do Postgres NÃO derrube o processo Node.
  */
@@ -21,8 +20,8 @@ if (process.env.NODE_ENV === "test") {
     ping: async () => ({ ok: true, latency_ms: 0 }),
     isAvailable: () => true,
   };
-  return;
-}
+} else {
+  const { Pool } = require("pg");
 
 const pool = new Pool({
   user: process.env.DB_USER,
@@ -131,3 +130,4 @@ module.exports = {
   isAvailable,
   getStatus,
 };
+}
