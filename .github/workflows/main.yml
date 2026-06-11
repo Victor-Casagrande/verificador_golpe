@@ -1,5 +1,8 @@
 name: Sentinela CI/CD Pipeline
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 on:
   push:
     branches:
@@ -148,11 +151,13 @@ jobs:
           fi
 
       - name: Deploy na Vercel
-        uses: amondnet/vercel-action@v20
-        continue-on-error: true # Permite que a esteira continue verde mesmo se o deploy falhar por falta da chave
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-args: '--prod'
-          working-directory: ./frontend
+        working-directory: ./frontend
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          if [ -z "${{ secrets.VERCEL_TOKEN }}" ]; then
+            echo "Sem token da Vercel, deploy cancelado."
+            exit 0
+          fi
+          npx vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }} --yes
