@@ -1,0 +1,158 @@
+name: Sentinela CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  # -------------------------------------------------------------
+  # 1. CI: Testes do Backend (API)
+  # -------------------------------------------------------------
+  test-api:
+    name: API - Testes e Auditoria
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: sentinela
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Setup do Node.js (versão 20)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Instalar dependências
+        working-directory: ./api
+        run: npm ci
+
+      - name: Executar migrações do banco de dados (Teste)
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d sentinela -f db/init/01-schema.sql
+          psql -h localhost -U postgres -d sentinela -f db/init/02-auth-history-reports.sql
+          psql -h localhost -U postgres -d sentinela -f db/init/03-oauth.sql
+          psql -h localhost -U postgres -d sentinela -f db/init/04-axe-analytics.sql
+          psql -h localhost -U postgres -d sentinela -f db/init/05-blacklist-cleanup-extensions.sql
+
+      - name: Executar testes da API
+        working-directory: ./api
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_USER: postgres
+          DB_PASSWORD: postgres
+          DB_NAME: sentinela
+          JWT_SECRET: teste_jwt_secret_ci
+          GOOGLE_API_KEY: fake_google_api_key_ci
+        run: npm test
+
+  # -------------------------------------------------------------
+  # 2. CI: Build do Frontend
+  # -------------------------------------------------------------
+  build-frontend:
+    name: Frontend - Verificação de Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Setup do Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Instalar dependências
+        working-directory: ./frontend
+        run: npm install
+
+      - name: Verificar se o build passa (Sem erros de Vite/React)
+        working-directory: ./frontend
+        run: npm run build
+
+  # -------------------------------------------------------------
+  # 3. CI/CD: Empacotamento da Extensão
+  # -------------------------------------------------------------
+  build-extension:
+    name: Extensão - Empacotamento (ZIP)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Zip da Extensão
+        working-directory: ./extension
+        run: zip -r ../sentinela-extension.zip ./*
+
+      - name: Upload do Artefato
+        uses: actions/upload-artifact@v4
+        with:
+          name: sentinela-extension-zip
+          path: sentinela-extension.zip
+
+  # -------------------------------------------------------------
+  # 4. CD: Deploy da API (Render)
+  # -------------------------------------------------------------
+  deploy-api:
+    name: API - Deploy para o Render
+    runs-on: ubuntu-latest
+    needs: test-api
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Acionar Render Deploy Hook
+        run: |
+          if [ -z "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" ]; then
+            echo "⚠️ Aviso: Secret RENDER_DEPLOY_HOOK_URL não encontrada no GitHub. Pulando Deploy da API."
+            echo "Crie a secret no GitHub com a URL fornecida pelo Render para habilitar o deploy automático."
+          else
+            echo "Iniciando o deploy na Render..."
+            curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+            echo "Deploy disparado com sucesso!"
+          fi
+
+  # -------------------------------------------------------------
+  # 5. CD: Deploy do Frontend (Vercel)
+  # -------------------------------------------------------------
+  deploy-frontend:
+    name: Frontend - Deploy para a Vercel
+    runs-on: ubuntu-latest
+    needs: build-frontend
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+        
+      - name: Verificar Vercel Token
+        id: check_token
+        run: |
+          if [ -z "${{ secrets.VERCEL_TOKEN }}" ]; then
+            echo "⚠️ Aviso: Secret VERCEL_TOKEN não encontrada. O deploy para a Vercel vai falhar e ser ignorado por enquanto."
+          fi
+
+      - name: Deploy na Vercel
+        uses: amondnet/vercel-action@v20
+        continue-on-error: true # Permite que a esteira continue verde mesmo se o deploy falhar por falta da chave
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: '--prod'
+          working-directory: ./frontend
