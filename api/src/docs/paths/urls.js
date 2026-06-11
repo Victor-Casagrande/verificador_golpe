@@ -63,6 +63,25 @@
  *       401:
  *         description: Não autenticado
  *
+ * /reports/mine:
+ *   get:
+ *     tags: [Denúncias]
+ *     summary: Lista paginada das denúncias do usuário autenticado
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 20, maximum: 100 }
+ *       - in: query
+ *         name: offset
+ *         schema: { type: integer, default: 0 }
+ *     responses:
+ *       200:
+ *         description: Lista paginada das denúncias do usuário
+ *       401:
+ *         description: Não autenticado
+ *
  * /urls/scores/history:
  *   get:
  *     tags: [Histórico]

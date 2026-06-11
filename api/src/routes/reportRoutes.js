@@ -13,4 +13,6 @@ router.post(
   reportController.createReport,
 );
 
+router.get("/mine", authenticate, reportController.getMyReports);
+
 module.exports = router;

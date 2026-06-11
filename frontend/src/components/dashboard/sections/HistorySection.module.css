@@ -1,0 +1,41 @@
+.tabs {
+  display: inline-flex;
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  padding: 3px;
+  gap: 2px;
+}
+
+.tab {
+  border: none;
+  background-color: transparent;
+  color: var(--color-text-muted);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  padding: 0.4rem 0.9rem;
+  border-radius: var(--radius-full);
+  transition: background-color var(--t-base), color var(--t-base);
+}
+
+.tab:hover {
+  color: var(--color-text);
+}
+
+.tabActive {
+  background-color: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.pageInfo {
+  font-size: var(--fs-xs);
+  color: var(--color-text-dim);
+}

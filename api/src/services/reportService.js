@@ -25,6 +25,17 @@ const createReport = async (
   });
 };
 
+/**
+ * Lista paginada das denúncias enviadas pelo próprio usuário autenticado.
+ */
+const getUserReports = async (userId, { limit, offset }) => {
+  const [items, total] = await Promise.all([
+    reportRepository.findByUserId(userId, { limit, offset }),
+    reportRepository.countByUserId(userId),
+  ]);
+  return { items, total };
+};
+
 const getWorstAccessibilityRankings = async ({ limit, min_analyses }) => {
   return reportRepository.findWorstAccessibilitySites({
     limit,
@@ -45,6 +56,7 @@ const getMostReportedSites = async ({ limit }) => {
 
 module.exports = {
   createReport,
+  getUserReports,
   getWorstAccessibilityRankings,
   getBestAccessibilityRankings,
   getMostReportedSites,

@@ -6,7 +6,7 @@ import styles from "./Hero.module.css";
  * Fiel ao protótipo: eyebrow, headline grande, subtítulo curto e dois botões
  * (primário ciano + secundário outlined).
  */
-export default function Hero({ onPrimaryClick, onSecondaryClick }) {
+export default function Hero({ onPrimaryClick, onSecondaryClick, onGuestAccess }) {
   return (
     <section id="topo" className={`${styles.hero} section`}>
       <div className={`container ${styles.inner}`}>
@@ -24,9 +24,15 @@ export default function Hero({ onPrimaryClick, onSecondaryClick }) {
           <Button variant="primary" size="lg" onClick={onPrimaryClick}>
             Começar agora
           </Button>
-          <Button variant="secondary" size="lg" onClick={onSecondaryClick}>
-            Saiba mais
-          </Button>
+          {onGuestAccess ? (
+            <Button variant="secondary" size="lg" onClick={onGuestAccess}>
+              Verificar uma URL
+            </Button>
+          ) : (
+            <Button variant="secondary" size="lg" onClick={onSecondaryClick}>
+              Saiba mais
+            </Button>
+          )}
         </div>
 
         <ul className={styles.badges} aria-label="Diferenciais rápidos">

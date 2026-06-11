@@ -35,14 +35,35 @@ const STORAGE_KEY =
 
 const AuthContext = createContext(null);
 
+/**
+ * Decodifica o payload do JWT (sem validar assinatura — só leitura) para
+ * derivar um usuário mínimo quando o backend não devolve o objeto `user`.
+ * É o caso do OAuth, cujo callback redireciona apenas com `?token=...`.
+ * Assim a saudação, o avatar e as chamadas autenticadas têm contexto do
+ * usuário mesmo no login social.
+ */
+const decodeUserFromToken = (token) => {
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) return null;
+    const json = atob(payload.replace(/-/g, "+").replace(/_/g, "/"));
+    const data = JSON.parse(json);
+    if (!data?.sub && !data?.email) return null;
+    return { id: data.sub, email: data.email || null };
+  } catch {
+    return null;
+  }
+};
+
 const readStoredAuth = () => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return { token: null, user: null };
     const parsed = JSON.parse(raw);
+    const token = typeof parsed?.token === "string" ? parsed.token : null;
     return {
-      token: typeof parsed?.token === "string" ? parsed.token : null,
-      user: parsed?.user ?? null,
+      token,
+      user: parsed?.user ?? (token ? decodeUserFromToken(token) : null),
     };
   } catch {
     return { token: null, user: null };
@@ -73,8 +94,11 @@ export function AuthProvider({ children }) {
   }, [auth.token]);
 
   const applyAuth = useCallback((nextToken, nextUser) => {
-    setAuth({ token: nextToken, user: nextUser ?? null });
-    persistAuth(nextToken, nextUser ?? null);
+    // Se o backend não enviou o usuário (fluxo OAuth), derivamos do token.
+    const resolvedUser =
+      nextUser ?? (nextToken ? decodeUserFromToken(nextToken) : null);
+    setAuth({ token: nextToken, user: resolvedUser });
+    persistAuth(nextToken, resolvedUser);
   }, []);
 
   const logout = useCallback(() => {

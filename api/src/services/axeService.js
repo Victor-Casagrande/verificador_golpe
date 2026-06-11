@@ -4,6 +4,14 @@ const {
   sanitizeViolations,
   formatDetailedViolations,
 } = require("../utils/axeViolations");
+const {
+  resolveChromiumExecutable,
+  configurePage,
+  navigateForAudit,
+  waitForPageReady,
+  scrollLazyFrames,
+  isFrameReadinessError,
+} = require("../utils/axePagePrep");
 
 const AXE_TIMEOUT_MS = parseInt(process.env.AXE_TIMEOUT_MS, 10) || 45000;
 
@@ -16,19 +24,6 @@ const IDLE_TIMEOUT_MS = 10 * 60 * 1000;
 
 const isAxeEnabled = () =>
   process.env.NODE_ENV !== "test" && process.env.AXE_ENABLED !== "false";
-
-const getExecutablePath = () => {
-  if (process.env.PUPPETEER_EXECUTABLE_PATH) {
-    return process.env.PUPPETEER_EXECUTABLE_PATH;
-  }
-  if (process.platform === "win32") {
-    return "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
-  }
-  if (process.platform === "darwin") {
-    return "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
-  }
-  return "/usr/bin/chromium";
-};
 
 const closeBrowser = async () => {
   if (idleTimeoutId) {
@@ -63,7 +58,7 @@ const getBrowser = async () => {
   if (!browserInstance || !browserInstance.connected) {
     browserInstance = await puppeteer.launch({
       headless: true,
-      executablePath: getExecutablePath(),
+      executablePath: resolveChromiumExecutable(),
       args: [
         "--no-sandbox",
         "--disable-setuid-sandbox",
@@ -83,6 +78,38 @@ const getBrowser = async () => {
 };
 
 /**
+ * Executa o axe na página com retentativas graduais quando o frame ainda não
+ * está pronto (erro frequente em SPAs e sites com iframes lazy).
+ */
+const runAxeAnalysis = async (page) => {
+  const attempt = async (legacyMode = false) => {
+    let builder = new AxePuppeteer(page);
+    if (legacyMode) builder = builder.setLegacyMode();
+    return builder.analyze();
+  };
+
+  try {
+    return await attempt(false);
+  } catch (firstError) {
+    if (!isFrameReadinessError(firstError)) throw firstError;
+
+    console.warn(
+      "[SENTRY-AXE] Frame não pronto — aguardando rede, scroll e nova tentativa…",
+    );
+    await waitForPageReady(page, 8000);
+    await scrollLazyFrames(page).catch(() => {});
+
+    try {
+      return await attempt(false);
+    } catch (secondError) {
+      if (!isFrameReadinessError(secondError)) throw secondError;
+      console.warn("[SENTRY-AXE] Recorrendo ao legacy mode do axe-core…");
+      return attempt(true);
+    }
+  }
+};
+
+/**
  * Executa axe-core na URL via Puppeteer (navegador headless).
  *
  * @param {string} urlString - URL a auditar
@@ -98,40 +125,20 @@ const auditUrl = async (urlString, options = {}) => {
     };
   }
 
-  let context = null;
   let page = null;
 
   try {
     const browser = await getBrowser();
     pagesProcessed++;
 
-    context = await browser.createBrowserContext();
-    page = await context.newPage();
+    // Usamos `newPage()` em vez de `createBrowserContext()`: o contexto
+    // isolado fazia o axe falhar com "Page/Frame is not ready" em sites reais.
+    page = await browser.newPage();
+    await configurePage(page, AXE_TIMEOUT_MS);
+    await navigateForAudit(page, urlString, AXE_TIMEOUT_MS);
+    await waitForPageReady(page);
 
-    await page.setRequestInterception(true);
-    page.on("request", (req) => {
-      const resourceType = req.resourceType();
-      if (["image", "stylesheet", "font", "media"].includes(resourceType)) {
-        req.abort().catch(() => {});
-      } else {
-        req.continue().catch(() => {});
-      }
-    });
-
-    page.on("dialog", async (dialog) => {
-      await dialog.dismiss().catch(() => {});
-    });
-
-    await page.setViewport({ width: 1280, height: 720 });
-    page.setDefaultNavigationTimeout(AXE_TIMEOUT_MS);
-    page.setDefaultTimeout(AXE_TIMEOUT_MS);
-
-    await page.goto(urlString, {
-      waitUntil: "domcontentloaded",
-      timeout: AXE_TIMEOUT_MS,
-    });
-
-    const results = await new AxePuppeteer(page).analyze();
+    const results = await runAxeAnalysis(page);
     const rawViolations = results.violations || [];
     const violations = sanitizeViolations(rawViolations);
 
@@ -154,9 +161,7 @@ const auditUrl = async (urlString, options = {}) => {
       error: error.message,
     };
   } finally {
-    if (context) {
-      await context.close().catch(() => {});
-    } else if (page) {
+    if (page) {
       await page.close().catch(() => {});
     }
   }

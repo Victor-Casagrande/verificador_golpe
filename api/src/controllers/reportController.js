@@ -13,6 +13,20 @@ const createReport = async (req, res, next) => {
   }
 };
 
+const getMyReports = async (req, res, next) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit, 10) || 20, 100);
+    const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
+    const { items, total } = await reportService.getUserReports(req.user.id, {
+      limit,
+      offset,
+    });
+    return res.status(200).json({ sucesso: true, total, limit, offset, items });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const getWorstAccessibilityRankings = async (req, res, next) => {
   try {
     const limit = Math.min(parseInt(req.query.limit, 10) || 10, 50);
@@ -133,6 +147,7 @@ const getMostReportedSites = async (req, res, next) => {
 
 module.exports = {
   createReport,
+  getMyReports,
   getWorstAccessibilityRankings,
   getBestAccessibilityRankings,
   getMostReportedSites,
