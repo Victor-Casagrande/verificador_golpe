@@ -4,6 +4,7 @@
 
 api/node_modules/
 node_modules/
+api/.cache/
 
 # CREDENCIAIS E VARIÁVEIS DE AMBIENTE (Extremamente crítico: impede o vazamento das senhas do PostgreSQL.)
 .env

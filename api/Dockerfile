@@ -3,6 +3,8 @@ FROM node:20-alpine AS builder
 
 WORKDIR /usr/src/app
 
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+
 COPY package.json package-lock.json ./
 RUN npm ci
 
@@ -15,16 +17,17 @@ WORKDIR /usr/src/app
 
 ENV NODE_ENV=production
 
-# Instalação do Chromium necessária para o Puppeteer no Alpine
+# Chromium do sistema para puppeteer-core (Alpine expõe /usr/bin/chromium, não chromium-browser)
 RUN apk add --no-cache \
     chromium \
     nss \
     freetype \
     harfbuzz \
     ca-certificates \
-    ttf-freefont
+    ttf-freefont \
+    && ln -sf /usr/bin/chromium /usr/bin/chromium-browser
 
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV AXE_ENABLED=true
 
