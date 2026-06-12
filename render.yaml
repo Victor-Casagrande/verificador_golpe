@@ -19,9 +19,11 @@ services:
       - key: PUPPETEER_SKIP_CHROMIUM_DOWNLOAD
         value: true
       - key: PUPPETEER_EXECUTABLE_PATH
-        value: /usr/bin/chromium
+        value: /usr/lib/chromium/chromium
+      - key: CORS_ALLOW_LOCALHOST
+        value: false
       # Defina no painel Render (não commitar valores reais):
-      # JWT_SECRET, GOOGLE_API_KEY, DB_*, OAuth_*, etc.
+      # JWT_SECRET, GOOGLE_API_KEY, DB_*, OAuth_*, FRONTEND_URL, CORS_ALLOWED_ORIGINS, etc.
 
   # --- Opção B: Node nativo (descomente e comente o serviço Docker acima) ---
   # - type: web

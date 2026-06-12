@@ -8,22 +8,45 @@
 
 const fs = require("fs");
 const path = require("path");
+const { execSync } = require("child_process");
 
 const fileExists = (candidate) => {
   if (!candidate) return false;
   try {
-    return fs.existsSync(candidate);
+    fs.accessSync(candidate, fs.constants.X_OK);
+    return true;
   } catch {
-    return false;
+    try {
+      return fs.existsSync(candidate);
+    } catch {
+      return false;
+    }
   }
 };
 
 const LINUX_CANDIDATES = [
-  "/usr/bin/chromium",
+  "/usr/lib/chromium/chromium",
   "/usr/bin/chromium-browser",
+  "/usr/bin/chromium",
   "/usr/bin/google-chrome-stable",
   "/usr/bin/google-chrome",
 ];
+
+/** Resolve via PATH do container (útil no Alpine/Docker). */
+const resolveViaPath = () => {
+  try {
+    const bin = execSync("command -v chromium-browser chromium 2>/dev/null", {
+      encoding: "utf8",
+      shell: "/bin/sh",
+    })
+      .trim()
+      .split("\n")[0];
+    if (fileExists(bin)) return bin;
+  } catch {
+    /* ignore */
+  }
+  return null;
+};
 
 const scanCandidates = (candidates) => {
   for (const candidate of candidates) {
@@ -121,6 +144,11 @@ const resolveChromiumExecutable = () => {
 
   const fromScan = scanCandidates(platformCandidates);
   if (fromScan) return fromScan;
+
+  if (process.platform === "linux") {
+    const fromPath = resolveViaPath();
+    if (fromPath) return fromPath;
+  }
 
   const fromCache = resolvePuppeteerCacheChrome();
   if (fromCache) return fromCache;

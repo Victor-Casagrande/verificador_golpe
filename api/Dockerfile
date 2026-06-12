@@ -5,7 +5,12 @@ WORKDIR /usr/src/app
 
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 
-COPY package.json package-lock.json ./
+# bcrypt compila binding nativo no install — precisa de toolchain no Alpine.
+RUN apk add --no-cache python3 make g++
+
+COPY package.json package-lock.json puppeteer.config.cjs ./
+# postinstall (ensure-chromium) sai imediatamente com PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+COPY scripts/ensure-chromium.js scripts/
 RUN npm ci
 
 COPY . .
@@ -17,7 +22,7 @@ WORKDIR /usr/src/app
 
 ENV NODE_ENV=production
 
-# Chromium do sistema para puppeteer-core (Alpine expõe /usr/bin/chromium, não chromium-browser)
+# Chromium do sistema para puppeteer-core (binário real em /usr/lib/chromium/chromium)
 RUN apk add --no-cache \
     chromium \
     nss \
@@ -25,9 +30,9 @@ RUN apk add --no-cache \
     harfbuzz \
     ca-certificates \
     ttf-freefont \
-    && ln -sf /usr/bin/chromium /usr/bin/chromium-browser
+    && test -x /usr/lib/chromium/chromium
 
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/lib/chromium/chromium
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV AXE_ENABLED=true
 
