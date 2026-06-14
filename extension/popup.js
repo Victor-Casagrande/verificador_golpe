@@ -20,16 +20,49 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // --- AUTENTICAÇÃO ---
-  document.getElementById("btn-login").addEventListener("click", () => {
+  document.getElementById("btn-google").addEventListener("click", () => {
     // Abre a rota do backend que inicia o OAuth do Google
-    chrome.tabs.create({ url: `${API_URL}/auth/google` });
+    chrome.tabs.create({ url: `${API_URL}/auth/oauth/google`,});
   });
+
+  document.getElementById("btn-github").addEventListener("click", () => {
+  chrome.tabs.create({
+    url: `${API_URL}/auth/oauth/github`,
+  });
+});
+
+  document.getElementById("btn-login-local").addEventListener("click", loginLocal);
 
   document.getElementById("btn-logout").addEventListener("click", async () => {
     await chrome.storage.local.remove("jwtToken");
     jwtToken = null;
     updateView();
   });
+
+  window.addEventListener(
+  "message",
+  async (event) => {
+
+    if (
+      event.data?.source ===
+      "sentinela-oauth"
+    ) {
+
+      const token =
+        event.data.token;
+
+      if (!token) return;
+
+      await chrome.storage.local.set({
+        jwtToken: token
+      });
+
+      jwtToken = token;
+
+      updateView();
+    }
+  }
+);
 
   // --- NAVEGAÇÃO DAS ABAS ---
   document.querySelectorAll(".tab-btn").forEach((btn) => {
@@ -62,6 +95,17 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
 
       const data = await res.json();
+      const total = data.length;
+
+      const safe = data.filter(
+        item => item.status === "safe"
+      ).length;
+
+      const danger = total - safe;
+
+      document.getElementById("total-checks").textContent = total;
+      document.getElementById("safe-checks").textContent = safe;
+      document.getElementById("danger-checks").textContent = danger;
       list.innerHTML = "";
 
       if (data.length === 0) {
@@ -201,3 +245,59 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Inicializa
   updateView();
 });
+
+async function loginLocal() {
+
+  const email =
+    document.getElementById("email").value;
+
+  const password =
+    document.getElementById("password").value;
+
+  try {
+
+    const response =
+      await fetch(`${API_URL}/auth/login`, {
+
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json"
+        },
+
+        body: JSON.stringify({
+          email,
+          password
+        })
+      });
+
+    const data =
+      await response.json();
+
+    if (!response.ok) {
+
+      alert(
+        data.message ||
+        "Credenciais inválidas"
+      );
+
+      return;
+    }
+
+    await chrome.storage.local.set({
+      jwtToken: data.token
+    });
+
+    jwtToken = data.token;
+
+    updateView();
+
+  } catch (error) {
+
+    console.error(error);
+
+    alert(
+      "Erro ao realizar login"
+    );
+  }
+}

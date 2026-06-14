@@ -1,74 +1,166 @@
 <!doctype html>
 <html lang="pt-BR">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Sentinela APL</title>
-    <link rel="stylesheet" href="popup.css" />
-  </head>
-  <body>
-    <div class="container">
-      <div id="login-view" class="view hidden">
-        <div class="header">
-          <img
-            src="icon.png"
-            alt="Sentinela Logo"
-            onerror="this.style.display = 'none'"
-            width="48"
-          />
-          <h2>Sentinela APL</h2>
-          <p>Acesso restrito ao domínio @ifc.edu.br</p>
-        </div>
-        <button id="btn-login" class="btn primary">Login com Google</button>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sentinela</title>
+
+  <link rel="stylesheet" href="popup.css" />
+</head>
+
+<body>
+  <div class="container">
+
+    <!-- LOGIN -->
+    <div id="login-view" class="view">
+
+      <div class="logo-area">
+        <img src="icon.png" alt="Sentinela">
+        <h1>SENTINELA</h1>
       </div>
 
-      <div id="dashboard-view" class="view hidden">
-        <div class="header-dashboard">
-          <h2>Sentinela Dashboard</h2>
-          <button id="btn-logout" class="btn-text">Sair</button>
-        </div>
+      <div class="auth-form">
 
-        <div class="actions">
-          <button id="btn-report" class="btn warning">
-            Denunciar Página Atual
-          </button>
-        </div>
+  <label>Email</label>
+  <input
+    id="email"
+    type="email"
+    placeholder="Digite seu email"
+  />
 
-        <div class="tabs">
-          <button class="tab-btn active" data-target="history-tab">
-            Meu Histórico
-          </button>
-          <button class="tab-btn" data-target="ranking-tab">
-            Ranking Global
-          </button>
-        </div>
+  <label>Senha</label>
+  <input
+    id="password"
+    type="password"
+    placeholder="Digite sua senha"
+  />
 
-        <div id="history-tab" class="tab-content active">
-          <ul id="history-list" class="list">
-            <li class="loading">Carregando histórico...</li>
-          </ul>
-        </div>
+  <div class="oauth-buttons">
 
-        <div id="ranking-tab" class="tab-content hidden">
-          <ul id="ranking-list" class="list">
-            <li class="loading">Carregando rankings...</li>
-          </ul>
-        </div>
-      </div>
+    <button id="btn-google" class="oauth-btn">
+      Google
+    </button>
+
+    <button id="btn-github" class="oauth-btn">
+      GitHub
+    </button>
+
+  </div>
+
+  <button id="btn-login-local" class="btn primary">
+    Logar
+  </button>
+
+</div>
+
     </div>
-    <!-- Modal de Denúncia -->
-    <div id="report-modal" class="modal hidden">
-      <div class="modal-content">
-        <h3>Denunciar Página</h3>
-        <p id="report-domain">Domínio: </p>
-        <textarea id="report-reason" rows="3" placeholder="Descreva rapidamente o motivo..."></textarea>
-        <div class="modal-actions">
-          <button id="btn-cancel-report" class="btn btn-text">Cancelar</button>
-          <button id="btn-confirm-report" class="btn warning">Confirmar Denúncia</button>
+
+    <!-- DASHBOARD -->
+    <div id="dashboard-view" class="view hidden">
+
+      <div class="header-dashboard">
+        <div>
+          <h2>🛡️ Sentinela</h2>
+          <span>Central de Segurança</span>
         </div>
+
+        <button id="btn-logout" class="btn-text">
+          Sair
+        </button>
       </div>
+
+      <div class="stats">
+
+        <div class="stat-card">
+          <div id="total-checks" class="stat-number">0</div>
+          <div class="stat-label">Verificações</div>
+        </div>
+
+        <div class="stat-card safe">
+          <div id="safe-checks" class="stat-number">0</div>
+          <div class="stat-label">Seguros</div>
+        </div>
+
+        <div class="stat-card danger">
+          <div id="danger-checks" class="stat-number">0</div>
+          <div class="stat-label">Suspeitos</div>
+        </div>
+
+      </div>
+
+      <button id="btn-report" class="btn warning">
+        🚨 Denunciar Página Atual
+      </button>
+
+      <div class="tabs">
+        <button class="tab-btn active" data-target="history-tab">
+          Histórico
+        </button>
+
+        <button class="tab-btn" data-target="ranking-tab">
+          Ranking
+        </button>
+      </div>
+
+      <div id="history-tab" class="tab-content">
+        <ul id="history-list" class="list">
+          <li class="loading">
+            Carregando histórico...
+          </li>
+        </ul>
+      </div>
+
+      <div id="ranking-tab" class="tab-content hidden">
+        <ul id="ranking-list" class="list">
+          <li class="loading">
+            Carregando ranking...
+          </li>
+        </ul>
+      </div>
+
     </div>
-    
-    <script src="popup.js"></script>
-  </body>
+
+  </div>
+
+  <!-- MODAL -->
+
+  <div id="report-modal" class="modal hidden">
+
+    <div class="modal-content">
+
+      <h3>🚨 Denunciar Página</h3>
+
+      <p id="report-domain"></p>
+
+      <textarea
+        id="report-reason"
+        rows="4"
+        placeholder="Descreva o motivo da denúncia..."
+      ></textarea>
+
+      <div class="modal-actions">
+
+        <button
+          id="btn-cancel-report"
+          class="btn secondary"
+        >
+          Cancelar
+        </button>
+
+        <button
+          id="btn-confirm-report"
+          class="btn warning"
+        >
+          Confirmar
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <script src="popup.js"></script>
+
+</body>
 </html>

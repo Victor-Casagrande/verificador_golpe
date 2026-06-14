@@ -45,3 +45,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true; 
   }
 });
+
+chrome.runtime.onMessage.addListener(
+  async (message) => {
+
+    if (
+      message?.source ===
+      "sentinela-oauth"
+    ) {
+
+      await chrome.storage.local.set({
+        jwtToken: message.token
+      });
+    }
+  }
+);
