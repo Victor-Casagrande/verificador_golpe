@@ -1,0 +1,50 @@
+# Blueprint Render — https://render.com/docs/blueprint-spec
+#
+# Opção A (recomendada): Web Service com Docker — Chromium via apk no Alpine.
+# Opção B: Web Service Node nativo — Chrome baixado no postinstall (ver comentários).
+
+services:
+  - type: web
+    name: sentinela-api
+    runtime: docker
+    dockerfilePath: ./api/Dockerfile
+    dockerContext: ./api
+    plan: starter
+    healthCheckPath: /api/status
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: AXE_ENABLED
+        value: true
+      - key: PUPPETEER_SKIP_CHROMIUM_DOWNLOAD
+        value: true
+      - key: PUPPETEER_EXECUTABLE_PATH
+        value: /usr/lib/chromium/chromium
+      - key: CORS_ALLOW_LOCALHOST
+        value: false
+      # Defina no painel Render (não commitar valores reais):
+      # JWT_SECRET, GOOGLE_API_KEY, DB_*, OAuth_*, FRONTEND_URL, CORS_ALLOWED_ORIGINS, etc.
+
+  # --- Opção B: Node nativo (descomente e comente o serviço Docker acima) ---
+  # - type: web
+  #   name: sentinela-api
+  #   runtime: node
+  #   rootDir: api
+  #   buildCommand: npm ci
+  #   startCommand: npm start
+  #   healthCheckPath: /api/status
+  #   envVars:
+  #     - key: NODE_ENV
+  #       value: production
+  #     - key: AXE_ENABLED
+  #       value: true
+  #     - key: PUPPETEER_CACHE_DIR
+  #       value: /opt/render/project/src/api/.cache/puppeteer
+  #     # NÃO defina PUPPETEER_EXECUTABLE_PATH — o postinstall baixa o Chrome
+  #     # e resolveChromiumExecutable encontra api/.cache/puppeteer automaticamente.
+
+databases:
+  - name: sentinela-db
+    plan: free
+    databaseName: sentinela
+    user: sentinela

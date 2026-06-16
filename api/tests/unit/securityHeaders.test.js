@@ -23,13 +23,30 @@ describe('Security Headers & CORS Middleware', () => {
   });
 
   it('Cenário B: Requisição com cabeçalho Origin: http://site-malicioso.com', async () => {
-    const response = await request(app)
+    const prevNodeEnv = process.env.NODE_ENV;
+    const prevAllowLocalhost = process.env.CORS_ALLOW_LOCALHOST;
+
+    process.env.NODE_ENV = 'production';
+    process.env.CORS_ALLOW_LOCALHOST = 'false';
+    delete require.cache[require.resolve('../../src/config/cors')];
+    delete require.cache[require.resolve('../../src/app')];
+    const isolatedApp = require('../../src/app');
+
+    const response = await request(isolatedApp)
       .get('/')
       .set('Origin', 'http://site-malicioso.com');
 
-    // Expecting CORS error. Express default error handler returns 500 for unhandled errors
-    assert.equal(response.status, 500, 'Origem maliciosa deve ser barrada pelo CORS (erro 500)');
-    // The global error handler masks the error message, so we just check it's an internal server error
-    assert.match(response.text, /Ocorreu um erro interno no servidor/);
+    process.env.NODE_ENV = prevNodeEnv;
+    if (prevAllowLocalhost === undefined) delete process.env.CORS_ALLOW_LOCALHOST;
+    else process.env.CORS_ALLOW_LOCALHOST = prevAllowLocalhost;
+    delete require.cache[require.resolve('../../src/config/cors')];
+    delete require.cache[require.resolve('../../src/app')];
+
+    assert.equal(response.status, 200);
+    assert.notEqual(
+      response.headers['access-control-allow-origin'],
+      'http://site-malicioso.com',
+      'Origem maliciosa não deve receber access-control-allow-origin',
+    );
   });
 });

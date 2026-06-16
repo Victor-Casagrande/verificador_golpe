@@ -15,6 +15,7 @@ const { globalLimiter } = require('./middlewares/rateLimitMiddleware');
 const securityAnalyticsRoutes = require('./routes/securityAnalyticsRoutes');
 const accessibilityAnalyticsRoutes = require('./routes/accessibilityAnalyticsRoutes');
 const db = require('./config/database');
+const { createCorsOptions } = require('./config/cors');
 
 const app = express();
 
@@ -30,34 +31,7 @@ app.use(
     }
   })
 );
-const corsOptions = {
-  origin: function (origin, callback) {
-    const allowedOrigins = [
-      'http://localhost:5173',
-      process.env.FRONTEND_URL
-    ];
-    
-    // Extensão segura: valida o ID da extensão se fornecido via .env
-    const allowedExtension = process.env.EXTENSION_ID 
-      ? `chrome-extension://${process.env.EXTENSION_ID}` 
-      : null;
-
-    if (
-      !origin || 
-      allowedOrigins.includes(origin) || 
-      (allowedExtension && origin === allowedExtension) ||
-      (!process.env.EXTENSION_ID && origin.startsWith('chrome-extension://')) ||
-      origin.endsWith('.vercel.app') // Permite links de preview da Vercel
-    ) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true
-};
-
-app.use(cors(corsOptions));
+app.use(cors(createCorsOptions()));
 app.use(express.json({ limit: '5mb'}));
 app.use(express.urlencoded({ extended: true, limit: '1mb' })); 
 app.use(globalLimiter);
