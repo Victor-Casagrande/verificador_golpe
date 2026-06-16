@@ -12,6 +12,12 @@ de Software I e Projeto Aplicado I) composto por:
 
 Protótipo de UI no [Figma](https://www.figma.com/design/cSpctw3HFH3WtnrcE4Sxm0/Prot%C3%B3tipo-Golpe?node-id=0-1&t=G2b8J3uETeqTlqHO-1).
 
+### Arquitetura Cloud (Free Tier)
+O projeto opera na nuvem utilizando os seguintes serviços:
+- **Frontend:** Vercel (React/Vite).
+- **Backend:** Render (Node.js/Express). **Aviso de Cold Start:** devido ao plano gratuito, a API adormece após 15 minutos sem tráfego. A primeira análise da extensão após esse período pode levar até 40 segundos para "acordar" o servidor e inicializar o Puppeteer.
+- **Banco de Dados:** Supabase (PostgreSQL). O ambiente de produção utiliza a porta de Connection Pooling (`6543` / PgBouncer) em "Transaction Mode" para otimizar conexões e não estourar o limite de conexões simultâneas do plano gratuito. O ambiente Docker local continua usando a porta de conexão direta (`5432`).
+
 ---
 
 ## Sumário
@@ -19,7 +25,9 @@ Protótipo de UI no [Figma](https://www.figma.com/design/cSpctw3HFH3WtnrcE4Sxm0/
 - [Como funciona](#como-funciona)
 - [Estrutura do repositório](#estrutura-do-repositório)
 - [Pré-requisitos](#pré-requisitos)
-- [Executando com Docker (recomendado)](#executando-com-docker-recomendado)
+- [CI/CD (Integração e Deploy Contínuo)](#cicd-integração-e-deploy-contínuo)
+- [SRE e Segurança](#sre-e-segurança)
+- [Execução Local de Desenvolvimento (Docker)](#execução-local-de-desenvolvimento-docker)
 - [Executando sem Docker (Node + PostgreSQL locais)](#executando-sem-docker-node--postgresql-locais)
 - [Carregando a extensão no Chrome](#carregando-a-extensão-no-chrome)
 - [Variáveis de ambiente](#variáveis-de-ambiente)
@@ -124,7 +132,7 @@ verificador_golpe/
 
 | Ferramenta | Versão | Necessário para |
 |---|---|---|
-| [Docker](https://www.docker.com/) + Compose v2 | atual | Caminho rápido (API + banco) |
+| [Docker](https://www.docker.com/) + Compose v2 | atual | Caminho rápido (API + banco local) |
 | [Node.js](https://nodejs.org/) | 20+ | Desenvolvimento sem Docker |
 | [PostgreSQL](https://www.postgresql.org/) | 16+ | Desenvolvimento sem Docker |
 | Chrome ou Chromium | atual | Extensão + axe no host sem Docker |
@@ -134,10 +142,28 @@ verificador_golpe/
 
 ---
 
-## Executando com Docker (recomendado)
+## CI/CD (Integração e Deploy Contínuo)
 
-É a forma mais rápida — Chromium e dependências já vêm prontas dentro do
-container da API.
+- **Continuous Integration (CI):** O pipeline automatizado no arquivo `.github/workflows/main.yml` provisiona localmente o banco de dados e executa uma bateria de validação completa a cada Push ou Pull Request. Ele roda a suíte de testes do Backend (`npm test`), faz o check do build do Frontend, e gera um arquivo compactado (ZIP) preparado da Extensão do Chrome.
+- **Continuous Deployment (CD):** O CD é totalmente autônomo e não depende do GitHub Actions. A cada merge na branch `main`, as integrações nativas da plataforma da Vercel (Frontend) e Render (Backend) interceptam o hook e sobem os respectivos artefatos diretamente para a nuvem.
+
+---
+
+## SRE e Segurança
+
+O backend possui otimizações de nível de produção (SRE) para se manter resiliente a ataques de negação de serviço, estouro de banco (DB Bloat) e rodar de maneira otimizada abaixo da limitação dos 512MB de RAM do Render:
+
+- **Puppeteer Hardening:** Foram implementadas intercepções de rede (bloqueando mídias pesadas), injeção de flags agressivas como `--disable-dev-shm-usage`, e um timeout absoluto de 15 segundos no Chromium para evitar ataques de Tarpit com páginas que não terminam de carregar.
+- **Cache L1 para JWT:** A validação e checagem de Blocklist de autenticação é amortecida na memória por um cache `Map` (Limitado a 10.000 chaves e TTL de 60s), blindando a instância contra excesso de I/O em consultas PostgreSQL seguidas.
+- **Advisory Locks:** As rotinas programadas diárias (Job de Garbage Collection às 03:00) utilizam travas exclusivas de transação do PostgreSQL (`pg_try_advisory_xact_lock()`) prevenindo race conditions ou corrompimento de tabelas quando múltiplas instâncias da API tentam executar a ação paralela.
+- **Anti-Bloat:** Proteção contra esgotamento do disco através de Rate Limiters severos (máximo 5 denúncias a cada 15 min por IP) e restrições críticas do limite do payload nas rotas (como textos cortados obrigatoriamente a 500 caracteres).
+- **Proteção de CORS Exclusiva:** O backend implementa o bloqueio cross-origin a nível estrito, limitando o consumo e as respostas da API apenas aos domínios da Vercel em produção e ao `EXTENSION_ID` oficial do Chrome configurado.
+
+---
+
+## Execução Local de Desenvolvimento (Docker)
+
+Esta execução usa Docker Compose para subir o ambiente local. **Ele deve ser tratado como um ambiente estrito de Desenvolvimento**, não como via de produção.
 
 ### 1. Copie e preencha o `.env`
 
@@ -261,26 +287,31 @@ A API responde em `http://localhost:3000`. Os mesmos endpoints (`/api/status`,
 
 ## Variáveis de ambiente
 
-Todas vivem no `.env` da raiz (ou em `api/.env` quando o servidor roda
-fora do Docker). Confira `.env.example` para o modelo completo.
+As variáveis abaixo são cruciais para a implantação na nuvem e ambiente local. Confira `.env.example` para os valores de fallback e detalhes completos de implementação. Nunca faça commit de um arquivo `.env` para o Git.
+
+### Vercel (Frontend — React)
+
+| Variável | Obrigatório | Descrição |
+|---|---|---|
+| `VITE_API_URL` | sim | Endereço URL da API (ex: https://sentinela-api.onrender.com) |
+| `VITE_EXTENSION_ID` | recomendado | ID da extensão para comunicação via `postMessage` |
+
+### Render / Supabase (Backend — Node.js/PostgreSQL)
 
 | Variável | Obrigatório | Descrição |
 |---|---|---|
 | `PORT` | não (default 3000) | Porta da API |
-| `GOOGLE_API_KEY` | **sim** | Google Safe Browsing |
-| `JWT_SECRET` | **sim** | Segredo de assinatura dos tokens |
+| `GOOGLE_API_KEY` | **sim** | Google Safe Browsing API Key |
+| `JWT_SECRET` | **sim** | Segredo de assinatura dos tokens de sessão |
 | `JWT_EXPIRES_IN` | não (default `7d`) | Validade do JWT |
-| `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GITHUB_CALLBACK_URL` | só para OAuth GitHub | Credenciais da OAuth App |
-| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_CALLBACK_URL` | só para OAuth Google | Credenciais do OAuth Client |
-| `OAUTH_SUCCESS_REDIRECT` | recomendado | URL para onde a API redireciona após login OAuth bem-sucedido (com `?token=...`). O default usa `/auth/success` (página própria que copia o JWT). Necessário para a extensão capturar o token. |
-| `AXE_ENABLED` | não (default `true`) | `false` desliga a auditoria no servidor |
-| `AXE_TIMEOUT_MS` | não (default `45000`) | Timeout de navegação + análise do axe |
-| `PUPPETEER_EXECUTABLE_PATH` | sim em host sem Docker | Caminho do Chrome/Chromium |
-| `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_NAME`, `DB_PORT` | sim | Conexão PostgreSQL |
-| `DB_CONNECT_TIMEOUT_MS`, `DB_IDLE_TIMEOUT_MS` | não | Timeouts do pool `pg` |
-
-> Nunca commite o `.env` real — `.gitignore` já cobre `.env`, `*.env` e
-> `api/.env`, exceto `.env.example`.
+| `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GITHUB_CALLBACK_URL` | só para OAuth | Credenciais da OAuth App (GitHub) |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_CALLBACK_URL` | só para OAuth | Credenciais do OAuth Client (Google) |
+| `OAUTH_SUCCESS_REDIRECT` | recomendado | URL para redirecionamento frontend no login OAuth (`/auth/success` default) |
+| `AXE_ENABLED` | não (default `true`) | Flag para desativar axe-core puppeteer no servidor (`false`) |
+| `AXE_TIMEOUT_MS` | não (default `15000`) | Timeout rígido em MS do ambiente isolado Puppeteer |
+| `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_NAME`, `DB_PORT` | **sim** | Configurações de Conexão com Supabase |
+| `DB_CONNECT_TIMEOUT_MS`, `DB_IDLE_TIMEOUT_MS` | não | Timeouts de resiliência e fail-fast da lib Node-PG (`pg`) |
+| `CORS_ALLOWED_ORIGINS` | sim | Domínios frontend permitidos comunicarem-se com a API (URL da Vercel) |
 
 ---
 
