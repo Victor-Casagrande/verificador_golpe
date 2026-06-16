@@ -11,6 +11,9 @@ const SUSPICIOUS_KEYWORDS = [
   "admin",
   "password",
   "recover",
+  "promocao",
+  "oferta",
+  "oficial"
 ];
 
 const SUSPICIOUS_DOMAINS = [
