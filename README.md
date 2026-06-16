@@ -454,8 +454,9 @@ ao histórico do usuário.
     "report_received": true,
     "violations_count": 2,
     "sanitized_violations_stored": 2,
-    "accessibility_score": 11,
-    "quality_rating": 89,
+    "passes_count": 48,
+    "accessibility_score": 25,
+    "quality_rating": 93,
     "axe_source": "server",
     "axe_error": null
   },
@@ -468,10 +469,22 @@ ao histórico do usuário.
 |---|---|
 | `quality_rating` | 0–100 — **maior = melhor** acessibilidade |
 | `accessibility_score` | Penalidade acumulada — maior = pior |
+| `passes_count` | Regras de acessibilidade que a página **passou** (usado no amortecimento) |
 | `axe_source` | `server` (Puppeteer), `client` (fallback) ou `skipped` |
 
-Pontuação de violações: `critical × 4 + serious × 3 + moderate × 2 + minor × 1`,
-multiplicada pelos nós afetados.
+**Como a nota é calculada (justa por design):**
+
+1. **Penalidade por regra** com pesos por impacto:
+   `critical × 10 + serious × 5 + moderate × 2 + minor × 1`.
+2. **Retornos decrescentes por nós:** cada regra é multiplicada por `1 + log2(nós)`
+   (com teto), então repetir o mesmo problema em dezenas de elementos pesa cada
+   vez menos — uma única regra não zera o site.
+3. **Curva exponencial:** `quality_rating = 100 · e^(-penalidade/150)`. A nota
+   cai suavemente e nunca chega a zero "no grito"; só tende a zero em páginas
+   realmente catastróficas.
+4. **Amortecimento por cobertura:** quando o axe informa quantas regras a página
+   passou (`passes_count`), a penalidade é descontada proporcionalmente — sites
+   que acertam a maioria das verificações recebem uma nota mais clemente.
 
 **Status de segurança possíveis:**
 

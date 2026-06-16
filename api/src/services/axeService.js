@@ -121,6 +121,8 @@ const auditUrl = async (urlString, options = {}) => {
   if (!isAxeEnabled()) {
     return {
       violations: [],
+      passes_count: 0,
+      incomplete_count: 0,
       source: "skipped",
       error: "Auditoria axe desabilitada neste ambiente.",
     };
@@ -145,6 +147,12 @@ const auditUrl = async (urlString, options = {}) => {
 
     const payload = {
       violations,
+      // Regras que a página passou/ficaram incompletas — usadas para amortecer
+      // a nota pela cobertura (computeQualityRating).
+      passes_count: Array.isArray(results.passes) ? results.passes.length : 0,
+      incomplete_count: Array.isArray(results.incomplete)
+        ? results.incomplete.length
+        : 0,
       source: "server",
       error: null,
     };
@@ -158,6 +166,8 @@ const auditUrl = async (urlString, options = {}) => {
     console.warn(`[SENTRY-AXE] Falha ao auditar ${urlString}:`, error.message);
     return {
       violations: [],
+      passes_count: 0,
+      incomplete_count: 0,
       source: "server",
       error: error.message,
     };
