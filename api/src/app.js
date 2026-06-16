@@ -37,10 +37,16 @@ const corsOptions = {
       process.env.FRONTEND_URL
     ];
     
+    // Extensão segura: valida o ID da extensão se fornecido via .env
+    const allowedExtension = process.env.EXTENSION_ID 
+      ? `chrome-extension://${process.env.EXTENSION_ID}` 
+      : null;
+
     if (
       !origin || 
       allowedOrigins.includes(origin) || 
-      origin.startsWith('chrome-extension://') ||
+      (allowedExtension && origin === allowedExtension) ||
+      (!process.env.EXTENSION_ID && origin.startsWith('chrome-extension://')) ||
       origin.endsWith('.vercel.app') // Permite links de preview da Vercel
     ) {
       callback(null, true);

@@ -22,6 +22,20 @@ const SUSPICIOUS_DOMAINS = [
   "localtunnel.me",
 ];
 
+const WHITELISTED_DOMAINS = [
+  "google.com",
+  "amazon.com",
+  "microsoft.com",
+  "github.com",
+  "apple.com",
+  "facebook.com",
+  "linkedin.com",
+  "twitter.com",
+  "instagram.com",
+  "youtube.com",
+  "netflix.com"
+];
+
 const checkStaticHeuristics = (urlString) => {
   try {
     const parsedUrl = new URL(urlString);
@@ -29,91 +43,85 @@ const checkStaticHeuristics = (urlString) => {
     const pathname = parsedUrl.pathname.toLowerCase();
     const fullUrl = urlString.toLowerCase();
 
-    const isIp = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(domain);
-    if (isIp) {
+    // Whitelist check
+    const isWhitelisted = WHITELISTED_DOMAINS.some(
+      (wl) => domain === wl || domain.endsWith(`.${wl}`)
+    );
+    if (isWhitelisted) {
       return {
-        is_danger: true,
-        status: "Aparência Suspeita (Heurística)",
-        reason:
-          "Uso de endereço IP direto em vez de nome de domínio registrado.",
+        is_danger: false,
+        status: "Seguro",
+        reason: "Domínio conhecido e confiável (Whitelist).",
       };
+    }
+
+    let score = 0;
+    let reasons = [];
+
+    // Valid IPv4 Regex (0-255 blocks)
+    const ipv4Regex = /^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/;
+    const isIp = ipv4Regex.test(domain);
+    if (isIp) {
+      score += 60;
+      reasons.push("Uso de endereço IP direto.");
     }
 
     const hyphenCount = (domain.match(/-/g) || []).length;
     if (hyphenCount >= 3) {
-      return {
-        is_danger: true,
-        status: "Aparência Suspeita (Heurística)",
-        reason:
-          "Quantidade excessiva de hífens no domínio, uma característica comum de camuflagem cibernética.",
-      };
+      score += 30;
+      reasons.push("Quantidade excessiva de hífens.");
     }
 
-    const suspiciousTld =
-      /\.tk$|\.ml$|\.ga$|\.cf$|\.gq$|\.xyz$|\.top$|\.pw$/.test(domain);
+    const suspiciousTld = /\.tk$|\.ml$|\.ga$|\.cf$|\.gq$|\.xyz$|\.top$|\.pw$/.test(domain);
     if (suspiciousTld) {
-      return {
-        is_danger: true,
-        status: "Aparência Suspeita (Heurística)",
-        reason:
-          "Extensão de domínio (TLD) de baixa reputação, frequentemente associada a fraudes.",
-      };
+      score += 40;
+      reasons.push("TLD de baixa reputação.");
     }
 
-    const isDynamicDns = SUSPICIOUS_DOMAINS.some((suspiciousDomain) =>
-      domain.endsWith(suspiciousDomain),
-    );
+    const isDynamicDns = SUSPICIOUS_DOMAINS.some((d) => domain.endsWith(d));
     if (isDynamicDns) {
-      return {
-        is_danger: true,
-        status: "Aparência Suspeita (Heurística)",
-        reason:
-          "Hospedado em um serviço de DNS dinâmico ou túnel temporário, mascarando o servidor real.",
-      };
+      score += 60;
+      reasons.push("Uso de DNS dinâmico/Túnel.");
     }
 
     const hasSuspiciousKeyword = SUSPICIOUS_KEYWORDS.some(
-      (keyword) => domain.includes(keyword) || pathname.includes(keyword),
+      (keyword) => domain.includes(keyword) || pathname.includes(keyword)
     );
     if (hasSuspiciousKeyword) {
-      return {
-        is_danger: true,
-        status: "Aparência Suspeita (Heurística)",
-        reason:
-          'A URL contém palavras-chave de urgência ou identificação (ex: "login", "secure", "verify") típicas de engenharia social.',
-      };
+      score += 30;
+      reasons.push("Palavras-chave suspeitas.");
     }
 
     const domainParts = domain.split(".");
-    if (domainParts.length >= 5) {
-      return {
-        is_danger: true,
-        status: "Aparência Suspeita (Heurística)",
-        reason:
-          "Estrutura anormalmente profunda de subdomínios, utilizada para ofuscar o verdadeiro domínio base.",
-      };
+    if (domainParts.length >= 5 && !isIp) {
+      score += 30;
+      reasons.push("Excesso de subdomínios.");
     }
 
     if (fullUrl.length > 200) {
+      score += 20;
+      reasons.push("URL muito longa.");
+    }
+
+    // Limiar de perigo: >= 50
+    if (score >= 50) {
       return {
         is_danger: true,
         status: "Aparência Suspeita (Heurística)",
-        reason:
-          "URL excessivamente longa, frequentemente usada para esconder payloads de ataque ou dificultar a leitura humana.",
+        reason: reasons.join(" ") + ` (Score: ${score})`,
       };
     }
 
     return {
       is_danger: false,
       status: "Seguro",
-      reason: "Nenhuma ameaça detectada localmente ou nos bancos de dados.",
+      reason: "Nenhuma ameaça heurística significativa.",
     };
   } catch {
     return {
       is_danger: true,
       status: "Erro de Formato",
-      reason:
-        "A URL fornecida possui uma estrutura anômala ou ilegível, impossibilitando a análise estática.",
+      reason: "A URL fornecida possui formato inválido.",
     };
   }
 };

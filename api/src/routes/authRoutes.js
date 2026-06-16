@@ -80,6 +80,11 @@ router.get("/success", (req, res) => {
       }
     </div>
     <script>
+      // Oculta imediatamente os parâmetros da URL para evitar vazamento do token no histórico
+      if (window.history && window.history.replaceState) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+
       // Ponte invisível: entrega o resultado a quem iniciou o login e fecha.
       // - window.opener.postMessage: popup aberto pelo frontend (SPA)
       // - chrome.runtime.sendMessage: extensão Sentinela (quando presente)

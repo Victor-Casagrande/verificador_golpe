@@ -1,27 +1,21 @@
 chrome.runtime.onInstalled.addListener(() => {
   chrome.storage.local.get(["API_URL"], (result) => {
     if (!result.API_URL) {
-      // Para produção, alterar apenas este valor via código ou painel de opções futuro
       chrome.storage.local.set({ API_URL: "http://localhost:3000" });
     }
   });
 });
 
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  if (changeInfo.url && changeInfo.url.includes("/auth/success?token=")) {
-    const url = new URL(changeInfo.url);
-    const token = url.searchParams.get("token");
-
-    if (token) {
-      chrome.storage.local.set({ jwtToken: token }, () => {
-        chrome.tabs.remove(tabId);
-        console.info("Sentinela: Autenticação concluída e JWT armazenado.");
-      });
-    }
-  }
-});
-
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  // Trata o recebimento do token OAuth disparado pelo /auth/success (evitando ler a URL)
+  if (request.source === "sentinela-oauth" && request.token) {
+    chrome.storage.local.set({ jwtToken: request.token }, () => {
+      console.info("Sentinela: Autenticação concluída e JWT armazenado via mensagem.");
+    });
+    return false; // Não é necessário sendResponse
+  }
+
+  // Trata a análise de URLs e os erros/rate limit
   if (request.action === "analyzeUrl") {
     chrome.storage.local.get(["API_URL", "jwtToken"], (result) => {
       const apiUrl = result.API_URL || "http://localhost:3000";
@@ -36,12 +30,23 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         headers: headers,
         body: JSON.stringify({ url: request.url }),
       })
-      .then(response => response.json())
-      .then(data => sendResponse({ success: true, data }))
-      .catch(error => sendResponse({ success: false, error: error.message }));
+      .then(async (response) => {
+        if (!response.ok) {
+          let errorMessage = `Erro HTTP: ${response.status} ${response.statusText}`;
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.mensagem || errorData.error || errorMessage;
+          } catch (e) {
+            // Se não for JSON, ignora
+          }
+          throw new Error(errorMessage);
+        }
+        return response.json();
+      })
+      .then((data) => sendResponse({ success: true, data }))
+      .catch((error) => sendResponse({ success: false, error: error.message }));
     });
     
-    // IMPORTANTE: Retorna 'true' para indicar que o 'sendResponse' será chamado de forma assíncrona.
-    return true; 
+    return true; // call sendResponse asynchronously
   }
 });
