@@ -635,41 +635,13 @@ npm run test:urls
 
 ---
 
-## Limitações e issues conhecidas
+## Decisões Arquiteturais e Limitações Conhecidas
 
-Pontos importantes para quem vai testar/contribuir:
+Pontos importantes de design e segurança adotados pelo projeto:
 
-1. **Popup da extensão está em arquivos soltos na raiz.**
-   `extension/manifest.json` referencia `popup.html`, `popup.css`,
-   `popup.js` e `background.js` como se fossem irmãos dele, mas esses
-   quatro arquivos estão na **raiz do projeto**. Carregar `extension/` no
-   Chrome _sem ajustar_ deixa o popup, o background service worker e o
-   login-via-extensão sem funcionar — apenas o `content.js` (overlay +
-   chamada à API) opera. Para testar o popup, copie/mova os arquivos para
-   dentro de `extension/` antes de carregar.
-2. **`popup.js` aponta para rotas inexistentes.** O botão "Login com
-   Google" chama `${API_URL}/auth/google` (a rota correta é
-   `/auth/oauth/google`); a aba "Ranking Global" chama `/rankings` (não
-   existe — use `/rankings/accessibility/worst|best` ou `/rankings/reports/most`).
-3. **`dotenv` carrega `.env` do `cwd` do processo Node.** O `.env`
-   canônico fica na raiz, mas o `api/src/app.js` faz só
-   `require('dotenv').config()`, então em execução local (`cd api && npm
-   run dev`) ele procura por `api/.env`. Soluções: rodar via Docker (que
-   já injeta o `.env` da raiz com `env_file`), copiar o `.env` para
-   `api/.env`, ou exportar as variáveis na sessão.
-4. **`.env.example` tem `OAUTH_SUCCESS_REDIRECT` duplicado** (comentado
-   em uma linha, depois descomentado com outro valor). Quando for
-   preencher, use só a entrada ativa (`http://localhost:3000/auth/success`).
-5. **Histórico na UI:** a API expõe `/users/history` e
-   `/urls/scores/history`, mas a extensão ainda não consome essas rotas
-   de forma estável.
-6. **Modo degradado (Postgres fora):** análises continuam sendo
-   devolvidas (com `persistence.persisted: false`), mas **não entram no
-   histórico** quando o banco volta — não há replay automático.
-7. **`dev_mode: true` traz HTML cru** das páginas auditadas. Usar só em
-   desenvolvimento.
-8. **Sem Docker, o Puppeteer precisa de um Chrome/Chromium** instalado
-   no host com `PUPPETEER_EXECUTABLE_PATH` apontando para o binário.
+- **Modo Degradado ("Fail-Open" Stateless):** Para manter a API como um microsserviço puramente *Stateless* e sem atrasar o usuário, caso o banco de dados (Supabase) fique indisponível, as análises de URL (Safe Browsing e Heurísticas) continuarão funcionando normalmente, mas o salvamento no histórico será ignorado sem gerar fila de repetição offline.
+- **Modo de Desenvolvimento (`dev_mode`):** A flag `dev_mode: true` traz a árvore de HTML cru das páginas auditadas na resposta JSON. Isso converte uma resposta de 3KB em até 1.5MB. Para evitar o esgotamento da cota de banda (Bandwidth) do plano gratuito do Render, isso deve ser mantido estritamente em ambiente local.
+- **Otimização de Imagem Docker (`puppeteer-core`):** O projeto utiliza a biblioteca `puppeteer-core` em vez da versão completa do `puppeteer`. Isso evita o download embutido do Chromium no `package.json`, tornando a imagem Docker cerca de 300MB mais leve e reduzindo os tempos de "Cold Start" do servidor no Render. Ao rodar sem Docker, exige-se apontar o `PUPPETEER_EXECUTABLE_PATH` para o navegador local.
 
 ---
 

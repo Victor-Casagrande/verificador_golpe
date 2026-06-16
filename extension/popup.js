@@ -154,7 +154,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   async function loadRankings() {
     const list = document.getElementById("ranking-list");
     try {
-      const res = await fetch(`${API_URL}/rankings`);
+      const res = await fetch(`${API_URL}/rankings/accessibility/worst?limit=10`);
       if (!res.ok) throw new Error("Erro de rede");
 
       const data = await res.json();
@@ -226,7 +226,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${jwtToken}`,
         },
-        body: JSON.stringify({ url: currentTabForReport.url, reason }),
+        body: JSON.stringify({ url: currentTabForReport.url, report_type: "other", comment: reason }),
       });
 
       if (res.ok) {
@@ -247,6 +247,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 async function loginLocal() {
+  const storage = await chrome.storage.local.get("API_URL");
+  const API_URL = storage.API_URL || "http://localhost:3000";
 
   const email =
     document.getElementById("email").value;
@@ -288,9 +290,7 @@ async function loginLocal() {
       jwtToken: data.token
     });
 
-    jwtToken = data.token;
-
-    updateView();
+    window.location.reload();
 
   } catch (error) {
 
