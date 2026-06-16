@@ -7,6 +7,10 @@
  *     description: |
  *       Fluxo: (1) verificação de segurança Google/heurísticas; (2) auditoria axe-core via Puppeteer;
  *       (3) gera accessibility_score (penalidade) e quality_rating (0–100, maior = melhor).
+ *       A nota usa pesos por impacto (critical 10 / serious 5 / moderate 2 / minor 1),
+ *       retornos decrescentes por nós (1 + log2(nós), com teto), curva exponencial
+ *       (100·e^(-penalidade/150)) e amortecimento por cobertura via `passes_count` —
+ *       evitando zerar sites grandes e, no geral, razoáveis.
  *       Com `dev_mode: true`, a resposta inclui `accessibility.detailed_report` com exceções
  *       completas do axe-core (tags, nós afetados, HTML e failureSummary) para depuração.
  *       Cada chamada grava nova análise — o mesmo site em datas diferentes pode ter notas diferentes.

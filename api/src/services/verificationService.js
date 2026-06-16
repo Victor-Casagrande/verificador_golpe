@@ -26,12 +26,17 @@ const buildAccessibilityPayload = (
   devMode = false,
 ) => {
   const penaltyScore = computeAccessibilityScore(sanitizedReport);
-  const qualityRating = computeQualityRating(penaltyScore);
+  const passesCount = axeMeta.passesCount ?? 0;
+  const qualityRating = computeQualityRating(penaltyScore, {
+    violationsCount: sanitizedReport.length,
+    passesCount,
+  });
 
   const payload = {
     report_received: sanitizedReport.length > 0,
     violations_count: sanitizedReport.length,
     sanitized_violations_stored: sanitizedReport.length,
+    passes_count: passesCount,
     accessibility_score: penaltyScore,
     quality_rating: qualityRating,
     axe_source: axeMeta.source,
@@ -205,6 +210,7 @@ const resolveAccessibilityReport = async (
     return {
       violations: serverAudit.violations,
       detailedViolations: serverAudit.detailedViolations,
+      passesCount: serverAudit.passes_count ?? 0,
       source: serverAudit.source,
       error: serverAudit.error,
     };
@@ -214,6 +220,8 @@ const resolveAccessibilityReport = async (
   if (clientViolations.length > 0) {
     const meta = {
       violations: clientViolations,
+      // Fallback do cliente não informa regras aprovadas — sem amortecimento.
+      passesCount: 0,
       source: "client",
       error: serverAudit.error,
     };
@@ -228,6 +236,7 @@ const resolveAccessibilityReport = async (
   return {
     violations: [],
     detailedViolations: devMode ? [] : undefined,
+    passesCount: serverAudit.passes_count ?? 0,
     source: serverAudit.source,
     error: serverAudit.error,
   };
