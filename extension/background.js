@@ -50,18 +50,4 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true; // call sendResponse asynchronously
   }
 });
-
-chrome.runtime.onMessage.addListener(
-  async (message) => {
-
-    if (
-      message?.source ===
-      "sentinela-oauth"
-    ) {
-
-      await chrome.storage.local.set({
-        jwtToken: message.token
-      });
-    }
-  }
-);
+
