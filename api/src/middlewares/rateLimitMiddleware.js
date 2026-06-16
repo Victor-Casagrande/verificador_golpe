@@ -41,8 +41,20 @@ const analyzeLimiter = rateLimit({
   legacyHeaders: true,
 });
 
+const reportLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 5, // Limite rígido de denúncias
+  handler: (req, res, next, options) => {
+    next(new AppError("Muitas denúncias enviadas. Aguarde 15 minutos antes de enviar mais.", 429));
+  },
+  keyGenerator,
+  standardHeaders: true,
+  legacyHeaders: true,
+});
+
 module.exports = {
   globalLimiter,
   authLimiter,
   analyzeLimiter,
+  reportLimiter,
 };

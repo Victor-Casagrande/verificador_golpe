@@ -30,9 +30,10 @@ const validateCreateReport = (req, res, next) => {
     return next(new AppError("comment deve ser uma string.", 400));
   }
 
-  if (comment && comment.length > 2000) {
+  // Defesa contra DB Bloat: Limite rígido de 500 caracteres
+  if (comment && comment.length > 500) {
     return next(
-      new AppError("comment deve ter no máximo 2000 caracteres.", 400),
+      new AppError("comment deve ter no máximo 500 caracteres.", 400),
     );
   }
 

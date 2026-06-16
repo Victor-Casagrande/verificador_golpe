@@ -6,13 +6,25 @@ const scheduleCleanup = () => {
   // Expressão Cron: '0 3 * * *' = Executa diariamente às 03:00 AM
   cron.schedule("0 3 * * *", async () => {
     logger.info(
-      "[CRON] Iniciando rotina de limpeza do banco de dados (Garbage Collection)...",
+      "[CRON] Tentando iniciar rotina de limpeza do banco de dados (Garbage Collection)...",
     );
 
     const client = await pool.connect();
 
     try {
       await client.query("BEGIN");
+
+      // Adquire um lock a nível de transação. 
+      // Em caso de múltiplos containers disparando no mesmo minuto, apenas 1 adquire o lock.
+      // O lock é automaticamente liberado no COMMIT ou ROLLBACK.
+      const lockId = 123456789; // ID único para este job
+      const lockResult = await client.query("SELECT pg_try_advisory_xact_lock($1) AS locked", [lockId]);
+      
+      if (!lockResult.rows[0].locked) {
+        logger.info("[CRON] Rotina de limpeza já está rodando em outro container. Ignorando execução local.");
+        await client.query("ROLLBACK");
+        return;
+      }
 
       const historyResult = await client.query(`
         DELETE FROM url_analyses 

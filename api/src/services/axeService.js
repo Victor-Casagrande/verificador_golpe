@@ -13,7 +13,8 @@ const {
   isFrameReadinessError,
 } = require("../utils/axePagePrep");
 
-const AXE_TIMEOUT_MS = parseInt(process.env.AXE_TIMEOUT_MS, 10) || 45000;
+// Limite rígido para segurança contra hang em sites maliciosos (máximo 15000ms)
+const AXE_TIMEOUT_MS = Math.min(parseInt(process.env.AXE_TIMEOUT_MS, 10) || 15000, 15000);
 
 let browserInstance = null;
 let pagesProcessed = 0;

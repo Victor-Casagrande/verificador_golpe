@@ -2,6 +2,11 @@ const crypto = require("crypto");
 const db = require("../config/database");
 const logger = require("../utils/logger");
 
+// Cache L1 em memória (Map)
+const blacklistCache = new Map();
+const CACHE_TTL_MS = 60 * 1000; // 60 segundos
+const MAX_CACHE_SIZE = 10000; // Limite de chaves
+
 const extractTokenSignature = (token) =>
   token.split(".")[2] ||
   crypto.createHash("sha256").update(token).digest("hex");
@@ -30,12 +35,32 @@ const isTokenRevoked = async (token) => {
 
   const tokenSignature = extractTokenSignature(token);
 
+  // Consulta o Cache L1 (Memória)
+  const cached = blacklistCache.get(tokenSignature);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.revoked;
+  }
+
   try {
     const result = await db.query(
       "SELECT id FROM jwt_blacklist WHERE token_signature = $1 LIMIT 1",
       [tokenSignature],
     );
-    return result.rowCount > 0;
+    
+    const isRevoked = result.rowCount > 0;
+
+    // Proteção contra estouro de memória do Map
+    if (blacklistCache.size >= MAX_CACHE_SIZE) {
+      blacklistCache.clear();
+    }
+
+    // Armazena no Cache L1
+    blacklistCache.set(tokenSignature, {
+      revoked: isRevoked,
+      expiresAt: Date.now() + CACHE_TTL_MS
+    });
+
+    return isRevoked;
   } catch (err) {
     if (err.code === "42P01") {
       logger.warn(
