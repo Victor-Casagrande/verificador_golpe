@@ -182,9 +182,12 @@ const configurePage = async (page, timeoutMs) => {
   await page.setRequestInterception(true);
   page.on("request", (req) => {
     const type = req.resourceType();
-    // Bloqueia só mídia pesada — CSS e fontes permanecem para regras de contraste.
-    if (["image", "media"].includes(type)) {
+    // Bloqueia mídia, imagens, fontes, websockets, fetch/xhr (se não for documento).
+    // O Axe precisa avaliar o DOM, mas num ambiente restrito de RAM podemos bloquear o máximo possível.
+    if (["image", "media", "font", "websocket", "manifest", "texttrack", "eventsource"].includes(type)) {
       req.abort().catch(() => {});
+    } else if (req.isInterceptResolutionHandled && req.isInterceptResolutionHandled()) {
+        return;
     } else {
       req.continue().catch(() => {});
     }

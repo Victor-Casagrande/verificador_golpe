@@ -20,7 +20,7 @@ let browserInstance = null;
 let pagesProcessed = 0;
 let idleTimeoutId = null;
 
-const MAX_PAGES_PER_BROWSER = 50;
+const MAX_PAGES_PER_BROWSER = 10;
 const IDLE_TIMEOUT_MS = 10 * 60 * 1000;
 
 const isAxeEnabled = () =>
@@ -69,6 +69,19 @@ const getBrowser = async () => {
         "--no-first-run",
         "--no-zygote",
         "--disable-extensions",
+        "--single-process",
+        "--memory-pressure-off",
+        "--disable-background-networking",
+        "--disable-background-timer-throttling",
+        "--disable-client-side-phishing-detection",
+        "--disable-default-apps",
+        "--disable-hang-monitor",
+        "--disable-popup-blocking",
+        "--disable-prompt-on-repost",
+        "--disable-sync",
+        "--disable-translate",
+        "--metrics-recording-only",
+        "--safebrowsing-disable-auto-update",
       ],
     });
     pagesProcessed = 0;
