@@ -110,6 +110,35 @@ const runAxeAnalysis = async (page) => {
   }
 };
 
+class Semaphore {
+  constructor(max) {
+    this.max = max;
+    this.count = 0;
+    this.queue = [];
+  }
+
+  async acquire() {
+    if (this.count < this.max) {
+      this.count++;
+      return;
+    }
+    return new Promise((resolve) => this.queue.push(resolve));
+  }
+
+  release() {
+    if (this.queue.length > 0) {
+      const resolve = this.queue.shift();
+      resolve();
+    } else {
+      this.count--;
+    }
+  }
+}
+
+// Limite de instâncias Puppeteer simultâneas para evitar OOM em ambientes com baixa RAM (ex: Render 512MB).
+const AXE_CONCURRENCY = parseInt(process.env.AXE_CONCURRENCY, 10) || 1;
+const axeSemaphore = new Semaphore(AXE_CONCURRENCY);
+
 /**
  * Executa axe-core na URL via Puppeteer (navegador headless).
  *
@@ -129,6 +158,8 @@ const auditUrl = async (urlString, options = {}) => {
   }
 
   let page = null;
+  
+  await axeSemaphore.acquire();
 
   try {
     const browser = await getBrowser();
@@ -175,6 +206,7 @@ const auditUrl = async (urlString, options = {}) => {
     if (page) {
       await page.close().catch(() => {});
     }
+    axeSemaphore.release();
   }
 };
 
