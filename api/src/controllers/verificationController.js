@@ -1,5 +1,6 @@
 const verificationService = require("../services/verificationService");
 const { parseDevMode } = require("../utils/devMode");
+const { normalizeAnalysisUrl } = require("../utils/urlNormalize");
 
 /**
  * POST /urls/analyze
@@ -13,9 +14,10 @@ const verifyUrl = async (req, res, next) => {
     const { url, accessibility_report, dev_mode } = req.body;
     const devMode = parseDevMode(dev_mode);
     const userId = req.user?.id ?? null;
+    const normalizedUrl = normalizeAnalysisUrl(url);
 
     const analysisResult = await verificationService.verifyUrl(
-      url,
+      normalizedUrl,
       accessibility_report,
       userId,
       devMode,

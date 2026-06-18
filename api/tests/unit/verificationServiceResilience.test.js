@@ -58,6 +58,10 @@ const makeRepoMock = ({ findThrows = false, saveThrows = false } = {}) => ({
     if (findThrows) throw new Error("ECONNREFUSED: Postgres fora do ar");
     return null;
   },
+  findCachedAccessibilityByUrl: async () => {
+    if (findThrows) throw new Error("ECONNREFUSED: Postgres fora do ar");
+    return null;
+  },
   saveAnalysis: async () => {
     if (saveThrows) throw new Error("ECONNREFUSED: Postgres fora do ar");
     return { id: 42 };

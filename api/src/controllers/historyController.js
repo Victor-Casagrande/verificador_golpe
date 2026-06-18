@@ -2,6 +2,7 @@ const historyRepository = require("../repositories/historyRepository");
 const AppError = require("../utils/AppError");
 const { formatAnalysisRow } = require("../utils/formatAnalysis");
 const { validateUrl } = require("../utils/validators");
+const { normalizeAnalysisUrl } = require("../utils/urlNormalize");
 
 const parsePagination = (queryValue, defaultValue, maxLimit = null) => {
   if (queryValue === undefined || queryValue === null) return defaultValue;
@@ -31,9 +32,15 @@ const getUserHistory = async (req, res, next) => {
       );
     }
 
+    const normalizedFilter = urlFilter ? normalizeAnalysisUrl(urlFilter) : null;
+
     const [items, total] = await Promise.all([
-      historyRepository.findByUserId(req.user.id, { limit, offset, urlFilter }),
-      historyRepository.countByUserId(req.user.id, urlFilter),
+      historyRepository.findByUserId(req.user.id, {
+        limit,
+        offset,
+        urlFilter: normalizedFilter,
+      }),
+      historyRepository.countByUserId(req.user.id, normalizedFilter),
     ]);
 
     return res.status(200).json({
@@ -66,13 +73,14 @@ const getUrlScoreTimeline = async (req, res, next) => {
     }
 
     const limit = parsePagination(req.query.limit, 30, 100);
-    const timeline = await historyRepository.findUrlScoreTimeline(url, {
+    const normalizedUrl = normalizeAnalysisUrl(url);
+    const timeline = await historyRepository.findUrlScoreTimeline(normalizedUrl, {
       limit,
     });
 
     return res.status(200).json({
       sucesso: true,
-      url,
+      url: normalizedUrl,
       total: timeline.length,
       timeline: timeline.map((row) => ({
         analysis_id: row.id,

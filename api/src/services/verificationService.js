@@ -5,9 +5,15 @@ const {
   computeQualityRating,
 } = require("../utils/accessibilityScore");
 const { checkStaticHeuristics } = require("../utils/urlHeuristics");
-const { extractSiteHost } = require("../utils/urlNormalize");
+const {
+  extractSiteHost,
+  normalizeAnalysisUrl,
+} = require("../utils/urlNormalize");
 const { formatDetailedViolations } = require("../utils/axeViolations");
 const logger = require("../utils/logger");
+
+const GOOGLE_SAFE_BROWSING_TIMEOUT_MS =
+  parseInt(process.env.GOOGLE_SAFE_BROWSING_TIMEOUT_MS, 10) || 5000;
 
 const sanitizeClientReport = (report) => {
   if (!Array.isArray(report)) return [];
@@ -20,17 +26,37 @@ const sanitizeClientReport = (report) => {
   }));
 };
 
+const parseCachedViolations = (raw) => {
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+};
+
 const buildAccessibilityPayload = (
   sanitizedReport,
   axeMeta,
   devMode = false,
 ) => {
-  const penaltyScore = computeAccessibilityScore(sanitizedReport);
+  const fromCache = Boolean(axeMeta.fromCache);
+  const penaltyScore =
+    fromCache && axeMeta.cachedScores
+      ? axeMeta.cachedScores.accessibility_score
+      : computeAccessibilityScore(sanitizedReport);
   const passesCount = axeMeta.passesCount ?? 0;
-  const qualityRating = computeQualityRating(penaltyScore, {
-    violationsCount: sanitizedReport.length,
-    passesCount,
-  });
+  const qualityRating =
+    fromCache && axeMeta.cachedScores
+      ? axeMeta.cachedScores.quality_rating
+      : computeQualityRating(penaltyScore, {
+          violationsCount: sanitizedReport.length,
+          passesCount,
+        });
 
   const payload = {
     report_received: sanitizedReport.length > 0,
@@ -41,6 +67,7 @@ const buildAccessibilityPayload = (
     quality_rating: qualityRating,
     axe_source: axeMeta.source,
     axe_error: axeMeta.error || null,
+    from_cache: fromCache,
   };
 
   if (devMode && axeMeta.detailedViolations?.length > 0) {
@@ -94,6 +121,17 @@ const tryFindCachedSecurity = async (urlString) => {
   }
 };
 
+const tryFindCachedAccessibility = async (urlString) => {
+  try {
+    return await historyRepository.findCachedAccessibilityByUrl(urlString);
+  } catch (err) {
+    logger.warn(
+      `[DB-CACHE] Falha ao consultar cache de acessibilidade para ${urlString}: ${err.message}`,
+    );
+    return null;
+  }
+};
+
 const runSecurityCheck = async (urlString) => {
   const cached = await tryFindCachedSecurity(urlString);
 
@@ -117,20 +155,31 @@ const runSecurityCheck = async (urlString) => {
     }
 
     const googleApiUrl = `https://safebrowsing.googleapis.com/v4/threatMatches:find?key=${apiKey}`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(
+      () => controller.abort(),
+      GOOGLE_SAFE_BROWSING_TIMEOUT_MS,
+    );
 
-    const response = await fetch(googleApiUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        client: { clientId: "ifc-videira-sentinela", clientVersion: "1.0.0" },
-        threatInfo: {
-          threatTypes: ["MALWARE", "SOCIAL_ENGINEERING", "UNWANTED_SOFTWARE"],
-          platformTypes: ["ANY_PLATFORM"],
-          threatEntryTypes: ["URL"],
-          threatEntries: [{ url: urlString }],
-        },
-      }),
-    });
+    let response;
+    try {
+      response = await fetch(googleApiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          client: { clientId: "ifc-videira-sentinela", clientVersion: "1.0.0" },
+          threatInfo: {
+            threatTypes: ["MALWARE", "SOCIAL_ENGINEERING", "UNWANTED_SOFTWARE"],
+            platformTypes: ["ANY_PLATFORM"],
+            threatEntryTypes: ["URL"],
+            threatEntries: [{ url: urlString }],
+          },
+        }),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     if (!response.ok) {
       throw new Error(`Google API HTTP ${response.status}`);
@@ -193,6 +242,23 @@ const persistAnalysis = async (payload) => {
   }
 };
 
+const buildAccessibilityFromCache = (cached) => {
+  const violations = parseCachedViolations(cached.accessibility_violations);
+
+  return {
+    violations,
+    detailedViolations: undefined,
+    passesCount: 0,
+    source: cached.axe_source || "server",
+    error: null,
+    fromCache: true,
+    cachedScores: {
+      accessibility_score: cached.accessibility_score,
+      quality_rating: cached.quality_rating,
+    },
+  };
+};
+
 /**
  * Resolve o relatório de acessibilidade com prioridade para o servidor (axe-core/Puppeteer).
  * Se a auditoria no servidor falhar sem violações, usa o fallback do cliente.
@@ -204,6 +270,13 @@ const resolveAccessibilityReport = async (
   clientReport,
   devMode = false,
 ) => {
+  if (!devMode) {
+    const cached = await tryFindCachedAccessibility(urlString);
+    if (cached) {
+      return buildAccessibilityFromCache(cached);
+    }
+  }
+
   const serverAudit = await axeService.auditUrl(urlString, { devMode });
 
   if (serverAudit.violations.length > 0 || !serverAudit.error) {
@@ -213,6 +286,7 @@ const resolveAccessibilityReport = async (
       passesCount: serverAudit.passes_count ?? 0,
       source: serverAudit.source,
       error: serverAudit.error,
+      fromCache: false,
     };
   }
 
@@ -224,6 +298,7 @@ const resolveAccessibilityReport = async (
       passesCount: 0,
       source: "client",
       error: serverAudit.error,
+      fromCache: false,
     };
 
     if (devMode && Array.isArray(clientReport)) {
@@ -239,6 +314,7 @@ const resolveAccessibilityReport = async (
     passesCount: serverAudit.passes_count ?? 0,
     source: serverAudit.source,
     error: serverAudit.error,
+    fromCache: false,
   };
 };
 
@@ -254,16 +330,15 @@ const verifyUrl = async (
   userId = null,
   devMode = false,
 ) => {
-  const siteHost = extractSiteHost(urlString);
+  const normalizedUrl = normalizeAnalysisUrl(urlString);
+  const siteHost = extractSiteHost(normalizedUrl);
 
-  const { result: securityResult, fromCache: securityFromCache } =
-    await runSecurityCheck(urlString);
+  const [{ result: securityResult, fromCache: securityFromCache }, axeMeta] =
+    await Promise.all([
+      runSecurityCheck(normalizedUrl),
+      resolveAccessibilityReport(normalizedUrl, accessibilityReport, devMode),
+    ]);
 
-  const axeMeta = await resolveAccessibilityReport(
-    urlString,
-    accessibilityReport,
-    devMode,
-  );
   const accessibility = buildAccessibilityPayload(
     axeMeta.violations,
     axeMeta,
@@ -272,7 +347,7 @@ const verifyUrl = async (
 
   const { analysisId, persistence } = await persistAnalysis({
     userId,
-    url: urlString,
+    url: normalizedUrl,
     siteHost,
     isDanger: securityResult.is_danger,
     status: securityResult.status,
@@ -300,4 +375,6 @@ module.exports = {
   buildAccessibilityPayload,
   persistAnalysis,
   tryFindCachedSecurity,
+  tryFindCachedAccessibility,
+  normalizeAnalysisUrl,
 };
