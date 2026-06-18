@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 import Sidebar from "../components/dashboard/Sidebar.jsx";
 import Topbar from "../components/dashboard/Topbar.jsx";
@@ -8,27 +8,6 @@ import HistorySection from "../components/dashboard/sections/HistorySection.jsx"
 import RankingsSection from "../components/dashboard/sections/RankingsSection.jsx";
 import ReportsSection from "../components/dashboard/sections/ReportsSection.jsx";
 import styles from "./Dashboard.module.css";
-
-/**
- * Painel principal.
- *
- * Navegação por seções é feita em memória (sem react-router): cada item da
- * Sidebar troca o `active`, que decide qual seção renderizar e qual
- * título/subtítulo a Topbar exibe.
- *
- * Modo visitante: a verificação de URLs (`/urls/analyze`) tem autenticação
- * OPCIONAL na API, então um usuário sem login pode usar a seção "Verificar".
- * As demais seções dependem de endpoints autenticados/privados e ficam
- * bloqueadas — ao clicar nelas, abrimos o modal de login.
- *
- * Seções:
- *   - analyze   → verificar URL (pública; auth opcional)
- *   - history   → histórico de avaliações e denúncias (requer login)
- *   - rankings  → top 10 melhores e piores avaliados (requer login)
- *   - reports   → sites com mais denúncias da comunidade (requer login)
- *
- * @param {() => void} props.onBackToSite - volta para a landing page.
- */
 
 const Icon = {
   analyze: (
@@ -120,12 +99,37 @@ export default function Dashboard({ onBackToSite }) {
   const { user, isAuthenticated } = useAuth();
   const [active, setActive] = useState("analyze");
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 720px)");
+    const onChange = (e) => {
+      if (!e.matches) setMobileNavOpen(false);
+    };
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
+  useEffect(() => {
+    if (!mobileNavOpen) return undefined;
+
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e) => {
+      if (e.key === "Escape") setMobileNavOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [mobileNavOpen]);
 
   const current = SECTIONS.find((s) => s.id === active) || SECTIONS[0];
   const ActiveSection = current.Component;
 
-  // Seções bloqueadas quando não há login (apenas "Verificar" fica liberada).
   const lockedIds = isAuthenticated
     ? []
     : SECTIONS.filter((s) => s.requiresAuth).map((s) => s.id);
@@ -136,12 +140,22 @@ export default function Dashboard({ onBackToSite }) {
       return;
     }
     setActive(id);
+    setMobileNavOpen(false);
   };
 
   const navItems = SECTIONS.map(({ id, label, icon }) => ({ id, label, icon }));
 
   return (
     <div className={styles.shell}>
+      {mobileNavOpen && (
+        <button
+          type="button"
+          className={styles.backdrop}
+          aria-label="Fechar menu"
+          onClick={() => setMobileNavOpen(false)}
+        />
+      )}
+
       <Sidebar
         sections={navItems}
         activeId={active}
@@ -149,6 +163,8 @@ export default function Dashboard({ onBackToSite }) {
         onBackToSite={onBackToSite}
         collapsed={collapsed}
         onToggleCollapse={() => setCollapsed((v) => !v)}
+        mobileOpen={mobileNavOpen}
+        onMobileClose={() => setMobileNavOpen(false)}
         user={user}
         lockedIds={lockedIds}
       />
@@ -159,6 +175,7 @@ export default function Dashboard({ onBackToSite }) {
             title={current.title}
             subtitle={current.subtitle}
             onLogin={() => setLoginOpen(true)}
+            onMenuClick={() => setMobileNavOpen(true)}
           />
           <ActiveSection />
         </div>

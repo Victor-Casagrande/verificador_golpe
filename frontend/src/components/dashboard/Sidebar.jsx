@@ -38,13 +38,18 @@ export default function Sidebar({
   onBackToSite,
   collapsed = false,
   onToggleCollapse,
+  mobileOpen = false,
+  onMobileClose,
   user,
   lockedIds = [],
 }) {
   return (
     <aside
-      className={`${styles.sidebar} ${collapsed ? styles.collapsed : ""}`}
+      className={`${styles.sidebar} ${collapsed ? styles.collapsed : ""} ${
+        mobileOpen ? styles.mobileOpen : ""
+      }`}
       aria-label="Navegação do painel"
+      aria-hidden={false}
     >
       <div className={styles.top}>
         <span className={styles.brand}>
@@ -102,7 +107,7 @@ export default function Sidebar({
       </nav>
 
       <div className={styles.bottom}>
-        <button type="button" className={styles.back} onClick={onBackToSite}>
+        <button type="button" className={styles.back} onClick={() => { onMobileClose?.(); onBackToSite(); }}>
           <span className={styles.itemIcon} aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none">
               <path

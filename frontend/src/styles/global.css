@@ -12,6 +12,7 @@ body,
   margin: 0;
   padding: 0;
   min-height: 100%;
+  overflow-x: clip;
 }
 
 html {
@@ -40,6 +41,12 @@ body {
       transparent 60%
     );
   background-attachment: fixed;
+}
+
+@media (max-width: 768px) {
+  body {
+    background-attachment: scroll;
+  }
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -98,8 +105,15 @@ select {
   width: 100%;
   max-width: var(--container-max);
   margin: 0 auto;
-  padding-left: var(--space-6);
-  padding-right: var(--space-6);
+  padding-left: max(var(--space-6), var(--safe-left));
+  padding-right: max(var(--space-6), var(--safe-right));
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding-left: max(var(--space-4), var(--safe-left));
+    padding-right: max(var(--space-4), var(--safe-right));
+  }
 }
 
 /* Section spacing comum entre blocos da landing. */
