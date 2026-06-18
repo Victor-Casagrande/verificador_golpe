@@ -28,7 +28,9 @@ app.use(
         scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
         imgSrc: ["'self'", 'data:', 'https:']
       }
-    }
+    },
+    // API consumida por SPA/extensão em outro domínio — não bloquear fetch cross-origin.
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
   })
 );
 app.use(cors(createCorsOptions()));
