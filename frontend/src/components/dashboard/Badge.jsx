@@ -3,7 +3,7 @@ import styles from "./Badge.module.css";
 /**
  * Pílula colorida por "tom" semântico.
  *
- * tone: "good" | "warn" | "bad" | "neutral" | "accent"
+ * tone: "good" | "warn" | "bad" | "neutral" | "accent" | "critical" | "serious" | "moderate" | "minor"
  */
 export default function Badge({ tone = "neutral", children, className = "" }) {
   return (

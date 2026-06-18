@@ -52,6 +52,27 @@ export const ratingTone = (rating) => {
 /** Tom do veredicto de segurança a partir do flag is_danger. */
 export const securityTone = (isDanger) => (isDanger ? "bad" : "good");
 
+/** Tom e rótulo do impacto axe-core (pesos da pontuação). */
+export const IMPACT_LABELS = {
+  critical: "Crítico",
+  serious: "Grave",
+  moderate: "Moderado",
+  minor: "Leve",
+};
+
+export const impactTone = (impact) => {
+  const tones = {
+    critical: "critical",
+    serious: "serious",
+    moderate: "moderate",
+    minor: "minor",
+  };
+  return tones[impact] || "neutral";
+};
+
+export const impactLabel = (impact) =>
+  IMPACT_LABELS[impact] || impact || "n/d";
+
 /** Encurta uma URL longa para exibição (mantém host + início do path). */
 export const shortenUrl = (url, max = 48) => {
   if (!url) return "—";
