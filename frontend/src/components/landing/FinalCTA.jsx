@@ -1,4 +1,5 @@
 import Button from "../ui/Button.jsx";
+import { API_BASE_URL } from "../../api/client.js";
 import styles from "./FinalCTA.module.css";
 
 export default function FinalCTA({ onPrimaryClick }) {
@@ -19,7 +20,7 @@ export default function FinalCTA({ onPrimaryClick }) {
               variant="secondary"
               size="lg"
               onClick={() =>
-                window.open("http://localhost:3000/api/docs", "_blank", "noopener")
+                window.open(`${API_BASE_URL}/api/docs`, "_blank", "noopener")
               }
             >
               Ver a API

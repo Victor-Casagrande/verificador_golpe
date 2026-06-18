@@ -1,4 +1,5 @@
 import Brand from "./Brand.jsx";
+import { API_BASE_URL } from "../../api/client.js";
 import styles from "./Footer.module.css";
 
 const COLS = [
@@ -13,9 +14,9 @@ const COLS = [
   {
     title: "Para desenvolvedores",
     links: [
-      { label: "Documentação da API", href: "http://localhost:3000/api/docs", external: true },
+      { label: "Documentação da API", href: `${API_BASE_URL}/api/docs`, external: true },
       { label: "GitHub", href: "https://github.com/Victor-Casagrande/verificador_golpe", external: true },
-      { label: "Status", href: "http://localhost:3000/api/status", external: true },
+      { label: "Status", href: `${API_BASE_URL}/api/status`, external: true },
     ],
   },
   {
