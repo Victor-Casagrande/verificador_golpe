@@ -49,4 +49,19 @@ describe('Security Headers & CORS Middleware', () => {
       'Origem maliciosa não deve receber access-control-allow-origin',
     );
   });
+
+  it('Cenário C: Requisição com cabeçalho Origin: https://verificador-golpe.vercel.app', async () => {
+    const response = await request(app)
+      .options('/users/history')
+      .set('Origin', 'https://verificador-golpe.vercel.app')
+      .set('Access-Control-Request-Method', 'GET')
+      .set('Access-Control-Request-Headers', 'authorization,content-type');
+
+    assert.equal(response.status, 204);
+    assert.equal(
+      response.headers['access-control-allow-origin'],
+      'https://verificador-golpe.vercel.app',
+    );
+    assert.equal(response.headers['access-control-allow-credentials'], 'true');
+  });
 });

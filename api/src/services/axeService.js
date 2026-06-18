@@ -80,7 +80,7 @@ const getBrowser = async () => {
 
 /**
  * Executa o axe na página com retentativas graduais quando o frame ainda não
- * está pronto (erro frequente em SPAs e sites com iframes lazy).
+ * está pronto
  */
 const runAxeAnalysis = async (page) => {
   const attempt = async (legacyMode = false) => {

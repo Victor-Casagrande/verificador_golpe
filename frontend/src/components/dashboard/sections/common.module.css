@@ -133,6 +133,24 @@
   gap: var(--space-3);
 }
 
+@media (max-width: 560px) {
+  .row {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .rowAside {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .rowTitle {
+    white-space: normal;
+    word-break: break-word;
+  }
+}
+
 /* ===== KPIs ===== */
 .kpis {
   display: grid;

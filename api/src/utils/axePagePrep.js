@@ -195,16 +195,16 @@ const configurePage = async (page, timeoutMs) => {
   });
 };
 
-/** Navega com `networkidle2` e faz fallback para `domcontentloaded`. */
+/** Navega com `domcontentloaded` (rápido) e faz fallback para `load`. */
 const navigateForAudit = async (page, urlString, timeoutMs) => {
   try {
     await page.goto(urlString, {
-      waitUntil: "networkidle2",
+      waitUntil: "domcontentloaded",
       timeout: timeoutMs,
     });
   } catch {
     await page.goto(urlString, {
-      waitUntil: "domcontentloaded",
+      waitUntil: "load",
       timeout: timeoutMs,
     });
   }

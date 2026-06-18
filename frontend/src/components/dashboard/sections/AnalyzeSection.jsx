@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Panel from "../Panel.jsx";
 import Badge from "../Badge.jsx";
 import Button from "../../ui/Button.jsx";
@@ -10,6 +10,8 @@ import { ApiError } from "../../../api/client.js";
 import { useAuth } from "../../../context/AuthContext.jsx";
 import {
   formatDateTime,
+  impactLabel,
+  impactTone,
   ratingTone,
   securityTone,
   toNumber,
@@ -17,41 +19,224 @@ import {
 import common from "./common.module.css";
 import styles from "./AnalyzeSection.module.css";
 
+const VERIFY_STEPS = [
+  "Consultando Google Safe Browsing e heurísticas locais…",
+  "Abrindo a página no navegador headless…",
+  "Executando auditoria axe-core…",
+  "Calculando nota de acessibilidade…",
+];
+
+const CHART_COLORS = {
+  good: "#4ade80",
+  warn: "#fbbf24",
+  bad: "#f87171",
+};
+
+const IMPACT_CARD_CLASS = {
+  critical: styles.violationCritical,
+  serious: styles.violationSerious,
+  moderate: styles.violationModerate,
+  minor: styles.violationMinor,
+};
+
 /**
- * Mini-gráfico de linha (sparkline) da nota de qualidade ao longo do tempo.
- * Recebe a timeline em ordem cronológica (mais antiga → mais nova).
+ * Gráfico de evolução da nota (0–100) com grade, rótulos e pontos coloridos.
  */
-function ScoreSparkline({ points }) {
+function ScoreHistoryChart({ points }) {
   if (!points || points.length < 2) return null;
-  const w = 320;
-  const h = 64;
-  const pad = 6;
+
   const values = points.map((p) => toNumber(p.quality_rating, 0));
-  const max = 100;
-  const min = 0;
-  const stepX = (w - pad * 2) / (points.length - 1);
+  const latest = values[values.length - 1];
+  const previous = values[values.length - 2];
+  const delta = latest - previous;
+  const minShown = Math.max(0, Math.min(...values) - 10);
+  const maxShown = 100;
+  const range = maxShown - minShown || 1;
+
+  const w = 400;
+  const h = 140;
+  const padL = 36;
+  const padR = 12;
+  const padT = 16;
+  const padB = 28;
+  const chartW = w - padL - padR;
+  const chartH = h - padT - padB;
+
   const coords = values.map((v, i) => {
-    const x = pad + i * stepX;
-    const y = pad + (1 - (v - min) / (max - min)) * (h - pad * 2);
-    return [x, y];
+    const x = padL + (i / (values.length - 1)) * chartW;
+    const y = padT + (1 - (v - minShown) / range) * chartH;
+    return { x, y, v, tone: ratingTone(v), point: points[i] };
   });
-  const line = coords.map(([x, y]) => `${x},${y}`).join(" ");
-  const area = `${pad},${h - pad} ${line} ${w - pad},${h - pad}`;
+
+  const line = coords.map((c) => `${c.x},${c.y}`).join(" ");
+  const area = `${padL},${padT + chartH} ${line} ${padL + chartW},${padT + chartH}`;
+
+  const gridLines = [0, 25, 50, 75, 100].filter(
+    (g) => g >= minShown && g <= maxShown,
+  );
 
   return (
-    <svg
-      className={styles.sparkline}
-      viewBox={`0 0 ${w} ${h}`}
-      preserveAspectRatio="none"
-      role="img"
-      aria-label="Evolução da nota de acessibilidade"
-    >
-      <polyline points={area} className={styles.sparkArea} />
-      <polyline points={line} className={styles.sparkLine} />
-      {coords.map(([x, y], i) => (
-        <circle key={i} cx={x} cy={y} r="2.5" className={styles.sparkDot} />
-      ))}
-    </svg>
+    <div className={styles.chartWrap}>
+      <div className={styles.chartStats}>
+        <div className={styles.chartStat}>
+          <span className={styles.chartStatLabel}>Última nota</span>
+          <span
+            className={`${styles.chartStatValue} ${styles[`chartTone_${ratingTone(latest)}`]}`}
+          >
+            {latest}
+          </span>
+        </div>
+        {delta !== 0 && (
+          <div className={styles.chartStat}>
+            <span className={styles.chartStatLabel}>Variação</span>
+            <span
+              className={delta > 0 ? styles.deltaUp : styles.deltaDown}
+            >
+              {delta > 0 ? "▲" : "▼"} {Math.abs(delta)} pts
+            </span>
+          </div>
+        )}
+        <div className={styles.chartStat}>
+          <span className={styles.chartStatLabel}>Análises</span>
+          <span className={styles.chartStatValue}>{points.length}</span>
+        </div>
+      </div>
+
+      <svg
+        className={styles.chartSvg}
+        viewBox={`0 0 ${w} ${h}`}
+        role="img"
+        aria-label={`Evolução da nota de acessibilidade: de ${values[0]} para ${latest}`}
+      >
+        <defs>
+          <linearGradient id="chartAreaGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="rgba(34, 211, 238, 0.28)" />
+            <stop offset="100%" stopColor="rgba(34, 211, 238, 0)" />
+          </linearGradient>
+          <linearGradient id="chartLineGrad" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#06b6d4" />
+            <stop offset="100%" stopColor="#22d3ee" />
+          </linearGradient>
+        </defs>
+
+        {gridLines.map((g) => {
+          const y = padT + (1 - (g - minShown) / range) * chartH;
+          return (
+            <g key={g}>
+              <line
+                x1={padL}
+                y1={y}
+                x2={padL + chartW}
+                y2={y}
+                className={styles.chartGrid}
+              />
+              <text x={padL - 6} y={y + 4} className={styles.chartAxisLabel}>
+                {g}
+              </text>
+            </g>
+          );
+        })}
+
+        <polyline points={area} fill="url(#chartAreaGrad)" stroke="none" />
+        <polyline
+          points={line}
+          fill="none"
+          stroke="url(#chartLineGrad)"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          vectorEffect="non-scaling-stroke"
+        />
+
+        {coords.map((c, i) => {
+          const isLast = i === coords.length - 1;
+          const color = CHART_COLORS[c.tone] || CHART_COLORS.warn;
+          return (
+            <g key={i}>
+              <circle
+                cx={c.x}
+                cy={c.y}
+                r={isLast ? 6 : 4}
+                fill={color}
+                stroke="#07090f"
+                strokeWidth={isLast ? 2 : 1.5}
+              />
+              {isLast && (
+                <text
+                  x={c.x}
+                  y={c.y - 10}
+                  className={styles.chartPointLabel}
+                  textAnchor="middle"
+                >
+                  {c.v}
+                </text>
+              )}
+            </g>
+          );
+        })}
+      </svg>
+
+      <div className={styles.chartLegend}>
+        <span>
+          <i className={styles.legendDot} style={{ background: CHART_COLORS.good }} />
+          ≥ 80
+        </span>
+        <span>
+          <i className={styles.legendDot} style={{ background: CHART_COLORS.warn }} />
+          50–79
+        </span>
+        <span>
+          <i className={styles.legendDot} style={{ background: CHART_COLORS.bad }} />
+          &lt; 50
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function VerifyingStatus({ stepIndex }) {
+  return (
+    <div className={styles.verifyingCard} role="status" aria-live="polite">
+      <div className={styles.verifyingIconRing} aria-hidden="true">
+        <div className={styles.verifyingIconPulse} />
+        <svg className={styles.verifyingIcon} viewBox="0 0 24 24" fill="none">
+          <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
+          <path
+            d="M20 20l-3.2-3.2"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+          />
+        </svg>
+      </div>
+      <div className={styles.verifyingText}>
+        <h3 className={styles.verifyingTitle}>Verificando URL…</h3>
+        <p className={styles.verifyingHint}>
+          Isso pode levar alguns segundos — estamos analisando segurança e
+          acessibilidade em paralelo.
+        </p>
+      </div>
+      <div className={styles.progressTrack} aria-hidden="true">
+        <div className={styles.progressBar} />
+      </div>
+      <ol className={styles.verifySteps}>
+        {VERIFY_STEPS.map((label, i) => (
+          <li
+            key={label}
+            className={`${styles.verifyStep} ${
+              i < stepIndex
+                ? styles.verifyStepDone
+                : i === stepIndex
+                  ? styles.verifyStepActive
+                  : ""
+            }`}
+          >
+            <span className={styles.verifyStepDot} aria-hidden="true" />
+            {label}
+          </li>
+        ))}
+      </ol>
+    </div>
   );
 }
 
@@ -60,15 +245,26 @@ export default function AnalyzeSection() {
   const [url, setUrl] = useState("");
   const [devMode, setDevMode] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [verifyStep, setVerifyStep] = useState(0);
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null);
 
   const [timeline, setTimeline] = useState(null);
 
-  // Estado do formulário de denúncia.
   const [reportType, setReportType] = useState(REPORT_TYPES[0].value);
   const [comment, setComment] = useState("");
   const [reportState, setReportState] = useState({ status: "idle", msg: null });
+
+  useEffect(() => {
+    if (!loading) {
+      setVerifyStep(0);
+      return undefined;
+    }
+    const id = setInterval(() => {
+      setVerifyStep((i) => Math.min(i + 1, VERIFY_STEPS.length - 1));
+    }, 2200);
+    return () => clearInterval(id);
+  }, [loading]);
 
   const handleAnalyze = async (e) => {
     e.preventDefault();
@@ -78,6 +274,7 @@ export default function AnalyzeSection() {
       return;
     }
     setLoading(true);
+    setVerifyStep(0);
     setError(null);
     setResult(null);
     setTimeline(null);
@@ -87,7 +284,6 @@ export default function AnalyzeSection() {
       const data = await analyzeUrl({ url: trimmed, devMode });
       setResult(data);
 
-      // Busca a evolução histórica dessa URL (timeline pública).
       try {
         const tl = await getUrlScoreTimeline({ url: trimmed, limit: 20 });
         setTimeline(tl);
@@ -141,13 +337,15 @@ export default function AnalyzeSection() {
 
   return (
     <div className={common.stack}>
-      {/* ===== Formulário de verificação ===== */}
       <Panel
         eyebrow="Verificação"
         title="Analisar um site"
         subtitle="Cole o link para checar segurança (golpe/phishing) e acessibilidade (axe-core)."
       >
-        <form className={styles.form} onSubmit={handleAnalyze}>
+        <form
+          className={`${styles.form} ${loading ? styles.formLoading : ""}`}
+          onSubmit={handleAnalyze}
+        >
           <div className={styles.inputRow}>
             <TextField
               label="URL do site"
@@ -157,6 +355,7 @@ export default function AnalyzeSection() {
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://exemplo.com/pagina"
               autoComplete="off"
+              disabled={loading}
             />
           </div>
 
@@ -166,17 +365,25 @@ export default function AnalyzeSection() {
               onChange={setDevMode}
               label="Modo dev"
               hint="Inclui o relatório detalhado das violações do axe-core."
+              disabled={loading}
             />
-            <Button type="submit" variant="primary" loading={loading}>
-              Verificar
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              loading={loading}
+              disabled={loading || !url.trim()}
+            >
+              {loading ? "Verificando…" : "Verificar URL"}
             </Button>
           </div>
 
           {error && <div className={common.error}>{error}</div>}
         </form>
+
+        {loading && <VerifyingStatus stepIndex={verifyStep} />}
       </Panel>
 
-      {/* ===== Resultado ===== */}
       {result && (
         <Panel
           eyebrow="Resultado"
@@ -191,7 +398,6 @@ export default function AnalyzeSection() {
           }
         >
           <div className={common.grid2}>
-            {/* Segurança */}
             <div className={styles.verdict}>
               <div className={styles.verdictHead}>
                 <span className={styles.verdictLabel}>Segurança</span>
@@ -203,7 +409,6 @@ export default function AnalyzeSection() {
               <p className={styles.verdictReason}>{security?.reason}</p>
             </div>
 
-            {/* Acessibilidade */}
             <div className={styles.verdict}>
               <div className={styles.verdictHead}>
                 <span className={styles.verdictLabel}>Acessibilidade</span>
@@ -246,7 +451,6 @@ export default function AnalyzeSection() {
             </p>
           )}
 
-          {/* Relatório detalhado (modo dev) */}
           {devMode &&
             Array.isArray(accessibility?.detailed_report) &&
             accessibility.detailed_report.length > 0 && (
@@ -254,50 +458,53 @@ export default function AnalyzeSection() {
                 <h3 className={styles.detailedTitle}>
                   Relatório detalhado (axe-core)
                 </h3>
+                <p className={styles.detailedHint}>
+                  Cores por gravidade: crítico (peso 10) → grave (5) → moderado
+                  (2) → leve (1).
+                </p>
                 <ul className={styles.detailedList}>
-                  {accessibility.detailed_report.map((v, i) => (
-                    <li key={v.id || i} className={styles.violation}>
-                      <div className={styles.violationHead}>
-                        <Badge
-                          tone={
-                            v.impact === "critical" || v.impact === "serious"
-                              ? "bad"
-                              : v.impact === "moderate"
-                                ? "warn"
-                                : "neutral"
-                          }
-                        >
-                          {v.impact || "n/d"}
-                        </Badge>
-                        <span className={styles.violationId}>{v.id}</span>
-                      </div>
-                      {v.description && (
-                        <p className={styles.violationDesc}>{v.description}</p>
-                      )}
-                      {Array.isArray(v.nodes) && v.nodes.length > 0 && (
-                        <p className={styles.violationNodes}>
-                          {v.nodes.length} elemento(s) afetado(s)
-                        </p>
-                      )}
-                      {v.helpUrl && (
-                        <a
-                          href={v.helpUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className={styles.violationLink}
-                        >
-                          Como corrigir →
-                        </a>
-                      )}
-                    </li>
-                  ))}
+                  {accessibility.detailed_report.map((v, i) => {
+                    const impact = v.impact || "minor";
+                    const cardClass =
+                      IMPACT_CARD_CLASS[impact] || styles.violationMinor;
+                    return (
+                      <li
+                        key={v.id || i}
+                        className={`${styles.violation} ${cardClass}`}
+                      >
+                        <div className={styles.violationHead}>
+                          <Badge tone={impactTone(impact)}>
+                            {impactLabel(impact)}
+                          </Badge>
+                          <span className={styles.violationId}>{v.id}</span>
+                        </div>
+                        {v.description && (
+                          <p className={styles.violationDesc}>{v.description}</p>
+                        )}
+                        {Array.isArray(v.nodes) && v.nodes.length > 0 && (
+                          <p className={styles.violationNodes}>
+                            {v.nodes.length} elemento(s) afetado(s)
+                          </p>
+                        )}
+                        {v.helpUrl && (
+                          <a
+                            href={v.helpUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={styles.violationLink}
+                          >
+                            Como corrigir →
+                          </a>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             )}
         </Panel>
       )}
 
-      {/* ===== Evolução / análises anteriores ===== */}
       {result && (
         <Panel
           eyebrow="Evolução"
@@ -311,8 +518,8 @@ export default function AnalyzeSection() {
             </div>
           ) : (
             <>
-              <ScoreSparkline points={chronological} />
-              <div className={common.list} style={{ marginTop: "var(--space-4)" }}>
+              <ScoreHistoryChart points={chronological} />
+              <div className={common.list} style={{ marginTop: "var(--space-5)" }}>
                 {[...chronological].reverse().map((p, i, arr) => {
                   const current = toNumber(p.quality_rating);
                   const olderIdx = i + 1;
@@ -344,6 +551,9 @@ export default function AnalyzeSection() {
                         </div>
                       </div>
                       <div className={common.rowAside}>
+                        <Badge tone={ratingTone(current)}>
+                          {current}/100
+                        </Badge>
                         <Badge tone={p.is_danger ? "bad" : "good"}>
                           {p.is_danger ? "risco" : "ok"}
                         </Badge>
@@ -357,7 +567,6 @@ export default function AnalyzeSection() {
         </Panel>
       )}
 
-      {/* ===== Denúncia (somente logado) ===== */}
       {result && !isAuthenticated && (
         <Panel
           eyebrow="Denúncia"

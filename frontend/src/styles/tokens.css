@@ -83,6 +83,20 @@
   /* === Layout === */
   --container-max: 1180px;
   --navbar-height: 72px;
+  --sidebar-width: 248px;
+  --touch-min: 44px;
+
+  /* Breakpoints (referência — usar nos @media) */
+  --bp-sm: 560px;
+  --bp-md: 720px;
+  --bp-lg: 880px;
+  --bp-xl: 960px;
+
+  /* Safe area (notch / home indicator) */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
 
   /* === Transições === */
   --t-fast: 120ms ease;

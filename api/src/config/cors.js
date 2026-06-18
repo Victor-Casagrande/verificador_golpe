@@ -11,10 +11,16 @@
 
 const logger = require("../utils/logger");
 
+const normalizeOrigin = (value) => {
+  const trimmed = (value || "").trim();
+  if (!trimmed) return "";
+  return trimmed.replace(/\/$/, "");
+};
+
 const parseOriginList = (value) =>
   (value || "")
     .split(",")
-    .map((entry) => entry.trim())
+    .map((entry) => normalizeOrigin(entry))
     .filter(Boolean);
 
 const isLocalhostOrigin = (origin) => {
@@ -66,7 +72,7 @@ const buildAllowedOrigins = () => {
     ...parseOriginList(process.env.CORS_ALLOWED_ORIGINS),
   ]);
 
-  const frontendUrl = process.env.FRONTEND_URL?.trim();
+  const frontendUrl = normalizeOrigin(process.env.FRONTEND_URL);
   if (frontendUrl) origins.add(frontendUrl);
 
   return origins;
@@ -77,6 +83,14 @@ const createCorsOptions = () => {
   const allowLocalhost = shouldAllowLocalhost();
 
   return {
+    methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE", "OPTIONS"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "Accept",
+      "X-Requested-With",
+    ],
+    optionsSuccessStatus: 204,
     origin(origin, callback) {
       // curl, Postman, Swagger same-origin, health checks
       if (!origin) {
@@ -111,5 +125,7 @@ module.exports = {
   createCorsOptions,
   buildAllowedOrigins,
   isLocalhostOrigin,
+  isDeployPreviewHost,
   shouldAllowLocalhost,
+  normalizeOrigin,
 };

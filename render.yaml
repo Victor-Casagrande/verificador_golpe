@@ -22,8 +22,12 @@ services:
         value: /usr/lib/chromium/chromium
       - key: CORS_ALLOW_LOCALHOST
         value: false
+      - key: FRONTEND_URL
+        value: https://verificador-golpe.vercel.app
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://verificador-golpe.vercel.app
       # Defina no painel Render (não commitar valores reais):
-      # JWT_SECRET, GOOGLE_API_KEY, DB_*, OAuth_*, FRONTEND_URL, CORS_ALLOWED_ORIGINS, etc.
+      # JWT_SECRET, GOOGLE_API_KEY, DB_*, OAuth_*, etc.
 
   # --- Opção B: Node nativo (descomente e comente o serviço Docker acima) ---
   # - type: web

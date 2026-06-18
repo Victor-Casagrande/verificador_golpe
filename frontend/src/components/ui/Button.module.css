@@ -28,9 +28,9 @@
 }
 
 /* === Sizes === */
-.s_sm { padding: 0.45rem 0.85rem; font-size: var(--fs-sm); }
-.s_md { padding: 0.65rem 1.25rem; font-size: var(--fs-base); }
-.s_lg { padding: 0.85rem 1.6rem;  font-size: var(--fs-lg); }
+.s_sm { padding: 0.45rem 0.85rem; font-size: var(--fs-sm); min-height: var(--touch-min); }
+.s_md { padding: 0.65rem 1.25rem; font-size: var(--fs-base); min-height: var(--touch-min); }
+.s_lg { padding: 0.85rem 1.6rem;  font-size: var(--fs-lg); min-height: calc(var(--touch-min) + 4px); }
 
 .fullWidth { width: 100%; }
 

@@ -97,6 +97,21 @@ const findCachedSecurityByUrl = async (urlString) => {
   return result.rows[0] || null;
 };
 
+const findCachedAccessibilityByUrl = async (urlString) => {
+  const result = await db.query(
+    `SELECT accessibility_violations, accessibility_score, quality_rating, axe_source
+     FROM url_analyses
+     WHERE url = $1
+       AND created_at >= NOW() - INTERVAL '24 hours'
+       AND axe_source IS NOT NULL
+       AND axe_source NOT IN ('skipped')
+     ORDER BY created_at DESC
+     LIMIT 1`,
+    [urlString],
+  );
+  return result.rows[0] || null;
+};
+
 const findUrlScoreTimeline = async (urlString, { limit = 30 } = {}) => {
   const result = await db.query(
     `SELECT id, url, site_host, accessibility_score, quality_rating, axe_source,
@@ -131,6 +146,7 @@ module.exports = {
   findByUserId,
   countByUserId,
   findCachedSecurityByUrl,
+  findCachedAccessibilityByUrl,
   findUrlScoreTimeline,
   findSiteHostTimeline,
 };

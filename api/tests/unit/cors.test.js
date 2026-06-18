@@ -3,8 +3,10 @@ const assert = require("node:assert/strict");
 const {
   buildAllowedOrigins,
   isLocalhostOrigin,
+  isDeployPreviewHost,
   shouldAllowLocalhost,
   createCorsOptions,
+  normalizeOrigin,
 } = require("../../src/config/cors");
 
 describe("cors config", () => {
@@ -41,6 +43,46 @@ describe("cors config", () => {
 
     process.env.CORS_ALLOW_LOCALHOST = "true";
     assert.equal(shouldAllowLocalhost(), true);
+  });
+
+  it("normalizeOrigin remove barra final", () => {
+    assert.equal(
+      normalizeOrigin("https://verificador-golpe.vercel.app/"),
+      "https://verificador-golpe.vercel.app",
+    );
+  });
+
+  it("isDeployPreviewHost aceita domínios Vercel e Render", () => {
+    assert.equal(
+      isDeployPreviewHost("https://verificador-golpe.vercel.app"),
+      true,
+    );
+    assert.equal(
+      isDeployPreviewHost("https://sentinela-api.onrender.com"),
+      true,
+    );
+    assert.equal(isDeployPreviewHost("http://site-malicioso.com"), false);
+  });
+
+  it("createCorsOptions permite origem Vercel em produção", () => {
+    process.env.NODE_ENV = "production";
+    process.env.CORS_ALLOW_LOCALHOST = "false";
+    delete process.env.CORS_ALLOWED_ORIGINS;
+    delete process.env.FRONTEND_URL;
+
+    const { origin } = createCorsOptions();
+
+    return new Promise((resolve, reject) => {
+      origin("https://verificador-golpe.vercel.app", (err, allowed) => {
+        try {
+          assert.equal(err, null);
+          assert.equal(allowed, true);
+          resolve();
+        } catch (e) {
+          reject(e);
+        }
+      });
+    });
   });
 
   it("createCorsOptions nega origem maliciosa sem lançar erro", () => {
