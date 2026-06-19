@@ -198,35 +198,93 @@ const configurePage = async (page, timeoutMs) => {
   });
 };
 
-/** Navega com `domcontentloaded` (rápido) e faz fallback para `load`. */
+/** Navega esperando recursos principais; tolera timeout se a URL já carregou parcialmente. */
 const navigateForAudit = async (page, urlString, timeoutMs) => {
   try {
-    await page.goto(urlString, {
-      waitUntil: "domcontentloaded",
-      timeout: timeoutMs,
-    });
-  } catch {
     await page.goto(urlString, {
       waitUntil: "load",
       timeout: timeoutMs,
     });
+  } catch (navError) {
+    const currentUrl = page.url();
+    if (!currentUrl || currentUrl === "about:blank") {
+      throw navError;
+    }
   }
 };
 
-/** Aguarda o documento principal estar pronto para injeção do axe. */
-const waitForPageReady = async (page, timeoutMs = 10000) => {
+/**
+ * O @axe-core/puppeteer exige readyState === "complete" em cada frame (assertFrameReady).
+ * Nossa preparação anterior aceitava "interactive", o que disparava o erro cedo demais.
+ */
+const waitForMainFrameComplete = async (page, timeoutMs = 10000) => {
   await page.waitForSelector("body", { timeout: timeoutMs }).catch(() => {});
+
+  const reachedComplete = await page
+    .waitForFunction(() => document.readyState === "complete", {
+      timeout: timeoutMs,
+    })
+    .then(() => true)
+    .catch(() => false);
+
+  if (!reachedComplete) {
+    // SPAs e portais de notícia (ex.: g1.globo.com) mantêm requests de ads/analytics
+    // abertos e nunca atingem "complete". Cancelar loads pendentes destrava o axe.
+    await page
+      .evaluate(() => {
+        if (document.readyState !== "complete") {
+          window.stop();
+        }
+      })
+      .catch(() => {});
+
+    await page
+      .waitForFunction(() => document.readyState === "complete", {
+        timeout: 3000,
+      })
+      .catch(() => {});
+  }
+
   await page
-    .waitForFunction(
-      () =>
-        document.readyState === "complete" ||
-        document.readyState === "interactive",
-      { timeout: timeoutMs },
-    )
+    .waitForNetworkIdle({ idleTime: 500, timeout: 3000 })
     .catch(() => {});
-  // SPAs costumam hidratar após o readyState; pequena folga determinística.
-  await page.waitForNetworkIdle({ idleTime: 500, timeout: 5000 }).catch(() => {});
 };
+
+/** Força iframes lazy a carregar — causa #1 de "Page/Frame is not ready" no axe. */
+const ensureLazyIframesLoaded = async (page) => {
+  await page
+    .evaluate(() => {
+      for (const iframe of document.querySelectorAll('iframe[loading="lazy"]')) {
+        iframe.loading = "eager";
+      }
+    })
+    .catch(() => {});
+
+  await scrollLazyFrames(page);
+
+  await page
+    .evaluate(() => {
+      for (const iframe of document.querySelectorAll("iframe")) {
+        try {
+          iframe.scrollIntoView({ block: "center", behavior: "instant" });
+        } catch {
+          /* iframe cross-origin ou removido */
+        }
+      }
+    })
+    .catch(() => {});
+
+  await new Promise((resolve) => setTimeout(resolve, 400));
+};
+
+/** Preparação completa antes da primeira chamada ao axe-core. */
+const preparePageForAxeAudit = async (page, timeoutMs = 10000) => {
+  await waitForMainFrameComplete(page, timeoutMs);
+  await ensureLazyIframesLoaded(page);
+};
+
+/** @deprecated Prefer preparePageForAxeAudit — mantido para compatibilidade interna. */
+const waitForPageReady = preparePageForAxeAudit;
 
 /** Rola a página para carregar iframes com loading="lazy" (causa conhecida de hang). */
 const scrollLazyFrames = async (page) => {
@@ -260,6 +318,9 @@ module.exports = {
   resolveChromiumExecutable,
   configurePage,
   navigateForAudit,
+  waitForMainFrameComplete,
+  ensureLazyIframesLoaded,
+  preparePageForAxeAudit,
   waitForPageReady,
   scrollLazyFrames,
   isFrameReadinessError,

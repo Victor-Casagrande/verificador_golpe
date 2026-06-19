@@ -63,4 +63,15 @@ describe("axePagePrep", () => {
 
     assert.throws(() => resolveChromiumExecutable(), /não encontrado|not found/i);
   });
+
+  it("exporta preparação completa para auditoria axe", () => {
+    const axePagePrep = require("../../src/utils/axePagePrep");
+    assert.equal(typeof axePagePrep.preparePageForAxeAudit, "function");
+    assert.equal(typeof axePagePrep.waitForMainFrameComplete, "function");
+    assert.equal(typeof axePagePrep.ensureLazyIframesLoaded, "function");
+    assert.equal(
+      axePagePrep.waitForPageReady,
+      axePagePrep.preparePageForAxeAudit,
+    );
+  });
 });

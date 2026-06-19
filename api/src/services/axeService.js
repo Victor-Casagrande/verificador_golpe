@@ -1,4 +1,5 @@
 const puppeteer = require("puppeteer-core");
+const fs = require("fs");
 const { AxePuppeteer } = require("@axe-core/puppeteer");
 const {
   sanitizeViolations,
@@ -8,8 +9,7 @@ const {
   resolveChromiumExecutable,
   configurePage,
   navigateForAudit,
-  waitForPageReady,
-  scrollLazyFrames,
+  preparePageForAxeAudit,
   isFrameReadinessError,
 } = require("../utils/axePagePrep");
 
@@ -69,7 +69,6 @@ const getBrowser = async () => {
         "--no-first-run",
         "--no-zygote",
         "--disable-extensions",
-        "--single-process",
         "--memory-pressure-off",
         "--disable-background-networking",
         "--disable-background-timer-throttling",
@@ -92,6 +91,21 @@ const getBrowser = async () => {
 };
 
 /**
+ * Fallback quando @axe-core/puppeteer não consegue injetar em subframes.
+ * Audita só o documento principal — suficiente para a nota de acessibilidade.
+ */
+const runAxeMainFrameOnly = async (page) => {
+  const axeSource = fs.readFileSync(require.resolve("axe-core"), "utf8");
+  await page.evaluate(axeSource);
+  return page.evaluate(async () => {
+    window.axe.configure({
+      branding: { application: "sentinela-axe-fallback" },
+    });
+    return window.axe.run(document);
+  });
+};
+
+/**
  * Executa o axe na página com retentativas graduais quando o frame ainda não
  * está pronto
  */
@@ -110,15 +124,22 @@ const runAxeAnalysis = async (page) => {
     console.warn(
       "[SENTRY-AXE] Frame não pronto — aguardando rede, scroll e nova tentativa…",
     );
-    await waitForPageReady(page, 8000);
-    await scrollLazyFrames(page).catch(() => {});
+    await preparePageForAxeAudit(page, 8000);
 
     try {
       return await attempt(false);
     } catch (secondError) {
       if (!isFrameReadinessError(secondError)) throw secondError;
       console.warn("[SENTRY-AXE] Recorrendo ao legacy mode do axe-core…");
-      return attempt(true);
+      try {
+        return await attempt(true);
+      } catch (thirdError) {
+        if (!isFrameReadinessError(thirdError)) throw thirdError;
+        console.warn(
+          "[SENTRY-AXE] Recorrendo à auditoria apenas no frame principal…",
+        );
+        return runAxeMainFrameOnly(page);
+      }
     }
   }
 };
@@ -183,7 +204,7 @@ const auditUrl = async (urlString, options = {}) => {
     page = await browser.newPage();
     await configurePage(page, AXE_TIMEOUT_MS);
     await navigateForAudit(page, urlString, AXE_TIMEOUT_MS);
-    await waitForPageReady(page);
+    await preparePageForAxeAudit(page, AXE_TIMEOUT_MS);
 
     const results = await runAxeAnalysis(page);
     const rawViolations = results.violations || [];
