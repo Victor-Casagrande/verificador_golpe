@@ -5,19 +5,13 @@ import Button from "../../ui/Button.jsx";
 import { getUserHistory } from "../../../api/history.js";
 import { getMyReports, REPORT_TYPES } from "../../../api/reports.js";
 import { ApiError } from "../../../api/client.js";
-import {
-  formatDateTime,
-  ratingTone,
-  shortenUrl,
-  toNumber,
-} from "../../../utils/format.js";
+import { formatDateTime, ratingTone, shortenUrl, toNumber } from "../../../utils/format.js";
 import common from "./common.module.css";
 import styles from "./HistorySection.module.css";
 
 const PAGE_SIZE = 10;
 
-const reportLabel = (value) =>
-  REPORT_TYPES.find((t) => t.value === value)?.label || value;
+const reportLabel = (value) => REPORT_TYPES.find((t) => t.value === value)?.label || value;
 
 export default function HistorySection() {
   const [tab, setTab] = useState("evaluations");
@@ -44,11 +38,7 @@ export default function HistorySection() {
       setTotal(toNumber(data.total));
       setOffset(nextOffset);
     } catch (err) {
-      setError(
-        err instanceof ApiError
-          ? err.message
-          : "Não foi possível carregar o histórico.",
-      );
+      setError(err instanceof ApiError ? err.message : "Não foi possível carregar o histórico.");
     } finally {
       setLoading(false);
     }
@@ -65,9 +55,7 @@ export default function HistorySection() {
       setReportsLoaded(true);
     } catch (err) {
       setReportsError(
-        err instanceof ApiError
-          ? err.message
-          : "Não foi possível carregar suas denúncias.",
+        err instanceof ApiError ? err.message : "Não foi possível carregar suas denúncias.",
       );
     } finally {
       setReportsLoading(false);
@@ -195,8 +183,8 @@ export default function HistorySection() {
 
           {!reportsLoading && !reportsError && reports.length === 0 && (
             <div className={common.state}>
-              Você ainda não enviou denúncias. Elas aparecem aqui após você
-              reportar um site na seção “Verificar”.
+              Você ainda não enviou denúncias. Elas aparecem aqui após você reportar um site na
+              seção “Verificar”.
             </div>
           )}
 
@@ -226,15 +214,12 @@ export default function HistorySection() {
                   variant="ghost"
                   size="sm"
                   disabled={!reportsCanPrev || reportsLoading}
-                  onClick={() =>
-                    loadReports(Math.max(0, reportsOffset - PAGE_SIZE))
-                  }
+                  onClick={() => loadReports(Math.max(0, reportsOffset - PAGE_SIZE))}
                 >
                   ← Anteriores
                 </Button>
                 <span className={styles.pageInfo}>
-                  {reportsOffset + 1}–
-                  {Math.min(reportsOffset + PAGE_SIZE, reportsTotal)} de{" "}
+                  {reportsOffset + 1}–{Math.min(reportsOffset + PAGE_SIZE, reportsTotal)} de{" "}
                   {reportsTotal}
                 </span>
                 <Button

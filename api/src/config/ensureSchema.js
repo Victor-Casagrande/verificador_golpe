@@ -26,9 +26,7 @@ const ensureAccessibilityScoreNumeric = async () => {
         ALTER COLUMN accessibility_score TYPE NUMERIC(7, 2)
         USING accessibility_score::numeric
     `);
-    logger.info(
-      "[Schema] Coluna accessibility_score migrada de INTEGER para NUMERIC(7,2).",
-    );
+    logger.info("[Schema] Coluna accessibility_score migrada de INTEGER para NUMERIC(7,2).");
   }
 };
 

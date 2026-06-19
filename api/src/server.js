@@ -1,3 +1,7 @@
+/**
+ * Ponto de entrada da API Sentinela — garante schema, agenda limpeza do banco
+ * e sobe o servidor HTTP com shutdown gracioso do Chromium.
+ */
 const path = require("path");
 require("dotenv").config({ path: path.resolve(__dirname, "../../.env") });
 
@@ -18,7 +22,7 @@ const start = async () => {
   cleanupJob.scheduleCleanup();
 
   server = app.listen(PORT, () => {
-    console.log(`[READY] Servidor SentryVZN rodando na porta: ${PORT}`);
+    console.log(`[READY] Servidor Sentinela rodando na porta: ${PORT}`);
   });
 };
 

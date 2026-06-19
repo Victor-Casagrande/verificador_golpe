@@ -1,3 +1,6 @@
+/**
+ * Serviço de autenticação local — registro, hash bcrypt e emissão de JWT.
+ */
 const bcrypt = require("bcrypt");
 const userRepository = require("../repositories/userRepository");
 const AppError = require("../utils/AppError");
@@ -34,10 +37,7 @@ const login = async ({ email, password }) => {
   }
 
   if (!user.password_hash) {
-    throw new AppError(
-      "Esta conta utiliza login social. Autentique-se via GitHub ou Google.",
-      401,
-    );
+    throw new AppError("Esta conta utiliza login social. Autentique-se via GitHub ou Google.", 401);
   }
 
   const passwordMatch = await bcrypt.compare(password, user.password_hash);

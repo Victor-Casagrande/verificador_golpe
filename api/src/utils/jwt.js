@@ -1,3 +1,6 @@
+/**
+ * Assinatura e verificação de JWT de sessão (stateless).
+ */
 const jwt = require("jsonwebtoken");
 const AppError = require("./AppError");
 

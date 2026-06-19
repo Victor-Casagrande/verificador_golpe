@@ -1,11 +1,11 @@
+/**
+ * Namespace /auth — registro/login local, OAuth e página ponte pós-callback.
+ */
 const express = require("express");
 const router = express.Router();
 const authController = require("../controllers/authController");
 const oauthRoutes = require("./oauthRoutes");
-const {
-  validateRegister,
-  validateLogin,
-} = require("../middlewares/authValidationMiddleware");
+const { validateRegister, validateLogin } = require("../middlewares/authValidationMiddleware");
 const { authLimiter } = require("../middlewares/rateLimitMiddleware");
 
 /**
@@ -35,10 +35,8 @@ router.use((req, res, next) => {
  *   3. Fecha a janela automaticamente. Em erro, mostra uma mensagem curta.
  */
 router.get("/success", (req, res) => {
-  const token =
-    typeof req.query.token === "string" ? req.query.token : "";
-  const errorMsg =
-    typeof req.query.error === "string" ? req.query.error : "";
+  const token = typeof req.query.token === "string" ? req.query.token : "";
+  const errorMsg = typeof req.query.error === "string" ? req.query.error : "";
 
   const safe = (str) =>
     String(str)

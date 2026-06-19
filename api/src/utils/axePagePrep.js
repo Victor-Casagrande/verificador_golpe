@@ -68,12 +68,7 @@ const resolvePuppeteerCacheChrome = () => {
 
     try {
       for (const platformDir of fs.readdirSync(chromeDir)) {
-        const linux = path.join(
-          chromeDir,
-          platformDir,
-          "chrome-linux64",
-          "chrome",
-        );
+        const linux = path.join(chromeDir, platformDir, "chrome-linux64", "chrome");
         if (fileExists(linux)) return linux;
 
         const mac = path.join(
@@ -87,12 +82,7 @@ const resolvePuppeteerCacheChrome = () => {
         );
         if (fileExists(mac)) return mac;
 
-        const win = path.join(
-          chromeDir,
-          platformDir,
-          "chrome-win64",
-          "chrome.exe",
-        );
+        const win = path.join(chromeDir, platformDir, "chrome-win64", "chrome.exe");
         if (fileExists(win)) return win;
       }
     } catch {
@@ -184,10 +174,12 @@ const configurePage = async (page, timeoutMs) => {
     const type = req.resourceType();
     // Bloqueia mídia, imagens, fontes, websockets, fetch/xhr (se não for documento).
     // O Axe precisa avaliar o DOM, mas num ambiente restrito de RAM podemos bloquear o máximo possível.
-    if (["image", "media", "font", "websocket", "manifest", "texttrack", "eventsource"].includes(type)) {
+    if (
+      ["image", "media", "font", "websocket", "manifest", "texttrack", "eventsource"].includes(type)
+    ) {
       req.abort().catch(() => {});
     } else if (req.isInterceptResolutionHandled && req.isInterceptResolutionHandled()) {
-        return;
+      return;
     } else {
       req.continue().catch(() => {});
     }
@@ -245,9 +237,7 @@ const waitForMainFrameComplete = async (page, timeoutMs = 10000) => {
       .catch(() => {});
   }
 
-  await page
-    .waitForNetworkIdle({ idleTime: 500, timeout: 3000 })
-    .catch(() => {});
+  await page.waitForNetworkIdle({ idleTime: 500, timeout: 3000 }).catch(() => {});
 };
 
 /** Força iframes lazy a carregar — causa #1 de "Page/Frame is not ready" no axe. */

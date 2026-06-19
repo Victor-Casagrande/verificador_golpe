@@ -40,11 +40,9 @@ const getOAuthStateSecret = () => process.env.JWT_SECRET || "oauth-state-dev";
  */
 const createOAuthState = (provider) => {
   const nonce = crypto.randomBytes(16).toString("hex");
-  const token = jwt.sign(
-    { purpose: "oauth", provider, nonce },
-    getOAuthStateSecret(),
-    { expiresIn: "10m" },
-  );
+  const token = jwt.sign({ purpose: "oauth", provider, nonce }, getOAuthStateSecret(), {
+    expiresIn: "10m",
+  });
   return { state: token, nonce };
 };
 
@@ -85,10 +83,7 @@ const buildAuthorizeUrl = (provider) => {
   }
 
   if (!isProviderConfigured(provider)) {
-    throw new AppError(
-      `Provedor ${provider} não está configurado no servidor.`,
-      503,
-    );
+    throw new AppError(`Provedor ${provider} não está configurado no servidor.`, 503);
   }
 
   const { clientId, callbackUrl } = getProviderEnv(provider);
@@ -139,10 +134,7 @@ const exchangeCodeForToken = async (provider, code) => {
   try {
     res = await fetch(config.tokenUrl, { method: "POST", headers, body });
   } catch (networkError) {
-    throw new AppError(
-      `Falha de rede ao comunicar com o servidor do provedor ${provider}.`,
-      502,
-    );
+    throw new AppError(`Falha de rede ao comunicar com o servidor do provedor ${provider}.`, 502);
   }
 
   if (!res.ok) {
@@ -164,10 +156,7 @@ const exchangeCodeForToken = async (provider, code) => {
   }
 
   if (!data.access_token) {
-    throw new AppError(
-      `Resposta do provedor ${provider} não contém access_token.`,
-      502,
-    );
+    throw new AppError(`Resposta do provedor ${provider} não contém access_token.`, 502);
   }
 
   return data.access_token;
@@ -187,10 +176,7 @@ const exchangeCodeForToken = async (provider, code) => {
  * relemos pelo email para reaproveitar a linha criada pela outra requisição.
  */
 const resolveOrCreateUser = async (provider, profile) => {
-  const existingOAuth = await oauthRepository.findByProvider(
-    provider,
-    profile.providerUserId,
-  );
+  const existingOAuth = await oauthRepository.findByProvider(provider, profile.providerUserId);
 
   if (existingOAuth) {
     return {
@@ -211,10 +197,7 @@ const resolveOrCreateUser = async (provider, profile) => {
         passwordHash: null,
       });
     } catch (error) {
-      if (
-        error.code === "23505" ||
-        (error.message && error.message.includes("unique"))
-      ) {
+      if (error.code === "23505" || (error.message && error.message.includes("unique"))) {
         user = await userRepository.findByEmail(profile.email);
         if (!user) {
           throw new AppError(
@@ -223,10 +206,7 @@ const resolveOrCreateUser = async (provider, profile) => {
           );
         }
       } else {
-        throw new AppError(
-          "Falha ao registar o novo utilizador no banco de dados.",
-          500,
-        );
+        throw new AppError("Falha ao registar o novo utilizador no banco de dados.", 500);
       }
     }
   }
@@ -254,10 +234,7 @@ const handleCallback = async (provider, { code, state }) => {
   verifyOAuthState(state, provider);
 
   if (!code) {
-    throw new AppError(
-      "Código de autorização ausente na resposta do provedor.",
-      400,
-    );
+    throw new AppError("Código de autorização ausente na resposta do provedor.", 400);
   }
 
   const accessToken = await exchangeCodeForToken(provider, code);

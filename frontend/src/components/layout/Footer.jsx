@@ -15,7 +15,11 @@ const COLS = [
     title: "Para desenvolvedores",
     links: [
       { label: "Documentação da API", href: `${API_BASE_URL}/api/docs`, external: true },
-      { label: "GitHub", href: "https://github.com/Victor-Casagrande/verificador_golpe", external: true },
+      {
+        label: "GitHub",
+        href: "https://github.com/Victor-Casagrande/verificador_golpe",
+        external: true,
+      },
       { label: "Status", href: `${API_BASE_URL}/api/status`, external: true },
     ],
   },
@@ -35,8 +39,8 @@ export default function Footer() {
         <div className={styles.brandCol}>
           <Brand size="lg" />
           <p className={styles.tagline}>
-            Detecte golpes e audite acessibilidade web antes de clicar.
-            Projeto integrador acadêmico — IFC.
+            Detecte golpes e audite acessibilidade web antes de clicar. Projeto integrador acadêmico
+            — IFC.
           </p>
         </div>
 

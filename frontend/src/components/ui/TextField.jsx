@@ -43,9 +43,7 @@ export default function TextField({
         disabled={disabled}
         className={`${styles.input} ${error ? styles.inputError : ""}`}
         aria-invalid={Boolean(error) || undefined}
-        aria-describedby={
-          error ? `${inputId}-error` : hint ? `${inputId}-hint` : undefined
-        }
+        aria-describedby={error ? `${inputId}-error` : hint ? `${inputId}-hint` : undefined}
         {...rest}
       />
       {error ? (

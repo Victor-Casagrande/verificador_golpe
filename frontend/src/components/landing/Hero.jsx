@@ -12,13 +12,11 @@ export default function Hero({ onPrimaryClick, onSecondaryClick, onGuestAccess }
       <div className={`container ${styles.inner}`}>
         <span className="eyebrow">Segurança e acessibilidade web</span>
         <h1 className={styles.title}>
-          Verifique{" "}
-          <span className={styles.titleAccent}>antes de clicar</span>
+          Verifique <span className={styles.titleAccent}>antes de clicar</span>
         </h1>
         <p className={styles.subtitle}>
-          O Sentinela analisa a página em tempo real, cruza com a Google Safe
-          Browsing, aplica heurísticas locais e ainda audita acessibilidade
-          com axe-core — tudo enquanto você navega.
+          O Sentinela analisa a página em tempo real, cruza com a Google Safe Browsing, aplica
+          heurísticas locais e ainda audita acessibilidade com axe-core — tudo enquanto você navega.
         </p>
         <div className={styles.actions}>
           <Button variant="primary" size="lg" onClick={onPrimaryClick}>
@@ -36,9 +34,15 @@ export default function Hero({ onPrimaryClick, onSecondaryClick, onGuestAccess }
         </div>
 
         <ul className={styles.badges} aria-label="Diferenciais rápidos">
-          <li><span className={styles.dot} /> API REST aberta</li>
-          <li><span className={styles.dot} /> Extensão Chrome</li>
-          <li><span className={styles.dot} /> Login Google &amp; GitHub</li>
+          <li>
+            <span className={styles.dot} /> API REST aberta
+          </li>
+          <li>
+            <span className={styles.dot} /> Extensão Chrome
+          </li>
+          <li>
+            <span className={styles.dot} /> Login Google &amp; GitHub
+          </li>
         </ul>
       </div>
     </section>

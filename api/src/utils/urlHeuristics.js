@@ -1,3 +1,9 @@
+/**
+ * Heurísticas locais de segurança quando o Google Safe Browsing não reporta ameaça.
+ *
+ * Cada regra soma pontos a um score; limiar >= 50 classifica como suspeito.
+ * Domínios na whitelist retornam imediatamente como seguros.
+ */
 const { URL } = require("url");
 
 const SUSPICIOUS_KEYWORDS = [
@@ -13,7 +19,7 @@ const SUSPICIOUS_KEYWORDS = [
   "recover",
   "promocao",
   "oferta",
-  "oficial"
+  "oficial",
 ];
 
 const SUSPICIOUS_DOMAINS = [
@@ -36,7 +42,7 @@ const WHITELISTED_DOMAINS = [
   "twitter.com",
   "instagram.com",
   "youtube.com",
-  "netflix.com"
+  "netflix.com",
 ];
 
 const checkStaticHeuristics = (urlString) => {
@@ -46,9 +52,8 @@ const checkStaticHeuristics = (urlString) => {
     const pathname = parsedUrl.pathname.toLowerCase();
     const fullUrl = urlString.toLowerCase();
 
-    // Whitelist check
     const isWhitelisted = WHITELISTED_DOMAINS.some(
-      (wl) => domain === wl || domain.endsWith(`.${wl}`)
+      (wl) => domain === wl || domain.endsWith(`.${wl}`),
     );
     if (isWhitelisted) {
       return {
@@ -61,7 +66,6 @@ const checkStaticHeuristics = (urlString) => {
     let score = 0;
     let reasons = [];
 
-    // Valid IPv4 Regex (0-255 blocks)
     const ipv4Regex = /^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/;
     const isIp = ipv4Regex.test(domain);
     if (isIp) {
@@ -88,7 +92,7 @@ const checkStaticHeuristics = (urlString) => {
     }
 
     const hasSuspiciousKeyword = SUSPICIOUS_KEYWORDS.some(
-      (keyword) => domain.includes(keyword) || pathname.includes(keyword)
+      (keyword) => domain.includes(keyword) || pathname.includes(keyword),
     );
     if (hasSuspiciousKeyword) {
       score += 30;
@@ -106,7 +110,6 @@ const checkStaticHeuristics = (urlString) => {
       reasons.push("URL muito longa.");
     }
 
-    // Limiar de perigo: >= 50
     if (score >= 50) {
       return {
         is_danger: true,

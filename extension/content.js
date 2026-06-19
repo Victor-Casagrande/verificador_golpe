@@ -1,7 +1,3 @@
-const SENTRY_CONFIG = {
-  TIMEOUT_MS: 90000,
-};
-
 async function getApiUrl() {
   return new Promise((resolve) => {
     chrome.storage.local.get(["API_URL"], (result) => {

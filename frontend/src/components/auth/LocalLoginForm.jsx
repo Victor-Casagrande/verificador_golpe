@@ -86,13 +86,7 @@ export default function LocalLoginForm({ mode, onSuccess }) {
         </div>
       )}
 
-      <Button
-        type="submit"
-        variant="primary"
-        fullWidth
-        size="md"
-        loading={submitting}
-      >
+      <Button type="submit" variant="primary" fullWidth size="md" loading={submitting}>
         {isRegister ? "Cadastrar" : "Entrar"}
       </Button>
     </form>

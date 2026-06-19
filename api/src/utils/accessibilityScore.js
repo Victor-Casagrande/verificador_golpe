@@ -41,8 +41,7 @@ const nodeFactor = (nodes) => {
 };
 
 const resolveNodeCount = (violation) =>
-  violation.nodes_count ??
-  (Array.isArray(violation.nodes) ? violation.nodes.length : 1);
+  violation.nodes_count ?? (Array.isArray(violation.nodes) ? violation.nodes.length : 1);
 
 /**
  * Penalidade acumulada (quanto maior, pior). Cresce de forma suave graças aos
@@ -75,9 +74,7 @@ const computeCoverageDamping = (violationsCount, passesCount) => {
   }
 
   const failRatio = fails / total;
-  return (
-    COVERAGE_MIN_DAMPING + (1 - COVERAGE_MIN_DAMPING) * Math.min(failRatio, 1)
-  );
+  return COVERAGE_MIN_DAMPING + (1 - COVERAGE_MIN_DAMPING) * Math.min(failRatio, 1);
 };
 
 /**

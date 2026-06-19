@@ -100,57 +100,57 @@ export default function Navbar({ onLoginClick, onEnterDashboard, onGuestAccess }
 
   return (
     <>
-    <header
-      className={`${styles.navbar} ${scrolled ? styles.navbarScrolled : ""} ${
-        mobileOpen ? styles.navbarMenuOpen : ""
-      }`}
-    >
-      <div className={`container ${styles.inner}`}>
-        <a
-          href="#topo"
-          className={styles.brandLink}
-          onClick={handleTopClick}
-          aria-label="Sentinela — voltar ao topo"
-        >
-          <Brand />
-        </a>
-
-        <nav className={styles.navDesktop} aria-label="Navegação principal">
-          <ul className={styles.list}>
-            {NAV_LINKS.map((link) => (
-              <li key={link.id}>
-                <a
-                  href={`#${link.id}`}
-                  className={styles.link}
-                  onClick={(e) => handleNavClick(e, link.id)}
-                >
-                  {link.label}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </nav>
-
-        <div className={styles.actions}>
-          <div className={styles.desktopActions}>{authActionsDesktop}</div>
-
-          <button
-            type="button"
-            className={`${styles.menuToggle} ${mobileOpen ? styles.menuToggleOpen : ""}`}
-            aria-label={mobileOpen ? "Fechar menu" : "Abrir menu"}
-            aria-expanded={mobileOpen}
-            aria-controls="mobile-menu-panel"
-            onClick={() => setMobileOpen((v) => !v)}
+      <header
+        className={`${styles.navbar} ${scrolled ? styles.navbarScrolled : ""} ${
+          mobileOpen ? styles.navbarMenuOpen : ""
+        }`}
+      >
+        <div className={`container ${styles.inner}`}>
+          <a
+            href="#topo"
+            className={styles.brandLink}
+            onClick={handleTopClick}
+            aria-label="Sentinela — voltar ao topo"
           >
-            <span className={styles.menuToggleLines} aria-hidden="true">
-              <span />
-              <span />
-              <span />
-            </span>
-          </button>
+            <Brand />
+          </a>
+
+          <nav className={styles.navDesktop} aria-label="Navegação principal">
+            <ul className={styles.list}>
+              {NAV_LINKS.map((link) => (
+                <li key={link.id}>
+                  <a
+                    href={`#${link.id}`}
+                    className={styles.link}
+                    onClick={(e) => handleNavClick(e, link.id)}
+                  >
+                    {link.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
+
+          <div className={styles.actions}>
+            <div className={styles.desktopActions}>{authActionsDesktop}</div>
+
+            <button
+              type="button"
+              className={`${styles.menuToggle} ${mobileOpen ? styles.menuToggleOpen : ""}`}
+              aria-label={mobileOpen ? "Fechar menu" : "Abrir menu"}
+              aria-expanded={mobileOpen}
+              aria-controls="mobile-menu-panel"
+              onClick={() => setMobileOpen((v) => !v)}
+            >
+              <span className={styles.menuToggleLines} aria-hidden="true">
+                <span />
+                <span />
+                <span />
+              </span>
+            </button>
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
 
       {mobileOpen && (
         <>
@@ -213,12 +213,8 @@ export default function Navbar({ onLoginClick, onEnterDashboard, onGuestAccess }
 
               {isAuthenticated && (
                 <div className={styles.mobileUserCard}>
-                  <span className={styles.mobileUserName}>
-                    {user?.name || "Usuário"}
-                  </span>
-                  {user?.email && (
-                    <span className={styles.mobileUserEmail}>{user.email}</span>
-                  )}
+                  <span className={styles.mobileUserName}>{user?.name || "Usuário"}</span>
+                  {user?.email && <span className={styles.mobileUserEmail}>{user.email}</span>}
                 </div>
               )}
 

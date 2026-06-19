@@ -72,12 +72,7 @@ export default function Modal({
       >
         <header className={styles.header}>
           {title && <h2 className={styles.title}>{title}</h2>}
-          <button
-            type="button"
-            className={styles.closeBtn}
-            onClick={onClose}
-            aria-label="Fechar"
-          >
+          <button type="button" className={styles.closeBtn} onClick={onClose} aria-label="Fechar">
             <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path
                 d="M6 6l12 12M18 6l-12 12"

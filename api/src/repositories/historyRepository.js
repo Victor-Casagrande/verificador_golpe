@@ -1,3 +1,6 @@
+/**
+ * Persistência de análises de URL, cache de 24 h e consultas de histórico.
+ */
 const db = require("../config/database");
 
 const saveAnalysis = async ({
@@ -44,10 +47,7 @@ const saveAnonymousAnalysis = async (payload) => {
   return row?.id ?? null;
 };
 
-const findByUserId = async (
-  userId,
-  { limit = 20, offset = 0, urlFilter = null } = {},
-) => {
+const findByUserId = async (userId, { limit = 20, offset = 0, urlFilter = null } = {}) => {
   const params = [userId, limit, offset];
   let urlClause = "";
 

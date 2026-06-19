@@ -1,9 +1,11 @@
+/**
+ * Analytics agregados de acessibilidade (autenticado) — médias globais e piores hosts.
+ */
 const accessibilityAnalyticsRepository = require("../repositories/accessibilityAnalyticsRepository");
 
 const getGlobalAccessibilityOverview = async (req, res, next) => {
   try {
-    const stats =
-      await accessibilityAnalyticsRepository.getGlobalAccessibilityStats();
+    const stats = await accessibilityAnalyticsRepository.getGlobalAccessibilityStats();
 
     return res.status(200).json({
       success: true,
@@ -30,8 +32,7 @@ const getWorstAccessibilityHosts = async (req, res, next) => {
       });
     }
 
-    const ranking =
-      await accessibilityAnalyticsRepository.getWorstAccessibilityHosts(limit);
+    const ranking = await accessibilityAnalyticsRepository.getWorstAccessibilityHosts(limit);
 
     return res.status(200).json({
       success: true,

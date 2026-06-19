@@ -1,11 +1,9 @@
+/**
+ * Persistência de denúncias e agregações SQL para rankings públicos.
+ */
 const db = require("../config/database");
 
-const VALID_REPORT_TYPES = [
-  "false_positive",
-  "confirmed_scam",
-  "accessibility_issue",
-  "other",
-];
+const VALID_REPORT_TYPES = ["false_positive", "confirmed_scam", "accessibility_issue", "other"];
 
 const create = async ({ userId, urlAnalysisId, url, reportType, comment }) => {
   const result = await db.query(
@@ -17,10 +15,7 @@ const create = async ({ userId, urlAnalysisId, url, reportType, comment }) => {
   return result.rows[0];
 };
 
-const findWorstAccessibilitySites = async ({
-  limit = 10,
-  minAnalyses = 1,
-} = {}) => {
+const findWorstAccessibilitySites = async ({ limit = 10, minAnalyses = 1 } = {}) => {
   const result = await db.query(
     `SELECT
        site_host,
@@ -42,10 +37,7 @@ const findWorstAccessibilitySites = async ({
   return result.rows;
 };
 
-const findBestAccessibilitySites = async ({
-  limit = 10,
-  minAnalyses = 1,
-} = {}) => {
+const findBestAccessibilitySites = async ({ limit = 10, minAnalyses = 1 } = {}) => {
   const result = await db.query(
     `SELECT
        site_host,
@@ -80,10 +72,9 @@ const findByUserId = async (userId, { limit = 20, offset = 0 } = {}) => {
 };
 
 const countByUserId = async (userId) => {
-  const result = await db.query(
-    "SELECT COUNT(*)::int AS total FROM reports WHERE user_id = $1",
-    [userId],
-  );
+  const result = await db.query("SELECT COUNT(*)::int AS total FROM reports WHERE user_id = $1", [
+    userId,
+  ]);
   return result.rows[0]?.total ?? 0;
 };
 

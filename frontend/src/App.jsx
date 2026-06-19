@@ -28,8 +28,7 @@ export default function App() {
     if (isAuthenticated) setGuest(false);
   }, [isAuthenticated]);
 
-  const inDashboard =
-    (isAuthenticated && !showLanding) || (!isAuthenticated && guest);
+  const inDashboard = (isAuthenticated && !showLanding) || (!isAuthenticated && guest);
 
   if (inDashboard) {
     return (
@@ -44,9 +43,7 @@ export default function App() {
 
   return (
     <Landing
-      onEnterDashboard={
-        isAuthenticated ? () => setShowLanding(false) : undefined
-      }
+      onEnterDashboard={isAuthenticated ? () => setShowLanding(false) : undefined}
       onGuestAccess={!isAuthenticated ? () => setGuest(true) : undefined}
     />
   );

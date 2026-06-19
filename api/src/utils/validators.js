@@ -1,3 +1,6 @@
+/**
+ * Validação de URLs externas — bloqueia localhost, metadata AWS e esquemas não HTTP(S).
+ */
 const validateUrl = (urlString) => {
   try {
     if (!urlString || typeof urlString !== "string") return false;
@@ -11,10 +14,7 @@ const validateUrl = (urlString) => {
     }
 
     const hostname = parsedUrl.hostname;
-    const isLocalhost =
-      hostname === "localhost" ||
-      hostname === "127.0.0.1" ||
-      hostname === "::1";
+    const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
     const isAwsMetadata = hostname === "169.254.169.254";
 
     if (isLocalhost || isAwsMetadata) {
@@ -22,7 +22,7 @@ const validateUrl = (urlString) => {
     }
 
     return true;
-  } catch (error) {
+  } catch {
     return false;
   }
 };

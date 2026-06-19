@@ -1,0 +1,21 @@
+{
+  "name": "sentinela-apl",
+  "private": true,
+  "description": "Sentinela APL — verificador de golpes e auditoria de acessibilidade",
+  "license": "GPL-3.0-or-later",
+  "scripts": {
+    "lint": "eslint api/src api/tests frontend/src",
+    "lint:fix": "eslint api/src api/tests frontend/src --fix",
+    "format": "prettier --write \"api/**/*.{js,json}\" \"frontend/**/*.{js,jsx,json,css}\" \"extension/**/*.{js,css,html}\" \"*.{md,json,yml}\"",
+    "format:check": "prettier --check \"api/**/*.{js,json}\" \"frontend/**/*.{js,jsx,json,css}\" \"extension/**/*.{js,css,html}\" \"*.{md,json,yml}\""
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "eslint": "^9.39.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "globals": "^16.5.0",
+    "prettier": "^3.6.2"
+  }
+}

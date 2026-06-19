@@ -1,10 +1,7 @@
 import { useEffect, useState } from "react";
 import Panel from "../Panel.jsx";
 import Badge from "../Badge.jsx";
-import {
-  getBestAccessibility,
-  getWorstAccessibility,
-} from "../../../api/rankings.js";
+import { getBestAccessibility, getWorstAccessibility } from "../../../api/rankings.js";
 import { ApiError } from "../../../api/client.js";
 import { ratingTone, toNumber } from "../../../utils/format.js";
 import common from "./common.module.css";
@@ -21,8 +18,7 @@ function RankingList({ loading, error, rows, emptyText }) {
     );
   }
   if (error) return <div className={common.error}>{error}</div>;
-  if (!rows || rows.length === 0)
-    return <div className={common.state}>{emptyText}</div>;
+  if (!rows || rows.length === 0) return <div className={common.state}>{emptyText}</div>;
 
   return (
     <div className={common.list}>
@@ -60,16 +56,12 @@ export default function RankingsSection() {
     const fetchRanking = async (fn, setState) => {
       try {
         const data = await fn({ limit: 10 });
-        if (!cancelled)
-          setState({ loading: false, error: null, rows: data.rankings || [] });
+        if (!cancelled) setState({ loading: false, error: null, rows: data.rankings || [] });
       } catch (err) {
         if (!cancelled)
           setState({
             loading: false,
-            error:
-              err instanceof ApiError
-                ? err.message
-                : "Não foi possível carregar o ranking.",
+            error: err instanceof ApiError ? err.message : "Não foi possível carregar o ranking.",
             rows: [],
           });
       }

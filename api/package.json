@@ -12,7 +12,10 @@
     "test:integration": "node --test tests/integration/**/*.test.js",
     "test:urls": "node scripts/test-urls-local.js",
     "jwt": "node scripts/gerarJWT.js",
-    "login:simulate": "node scripts/simulate-login.js"
+    "login:simulate": "node scripts/simulate-login.js",
+    "lint": "eslint --config ../eslint.config.mjs src tests",
+    "lint:fix": "eslint --config ../eslint.config.mjs src tests --fix",
+    "format": "prettier --write \"src/**/*.js\" \"tests/**/*.js\""
   },
   "keywords": [],
   "author": "",

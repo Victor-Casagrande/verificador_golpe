@@ -1,0 +1,7 @@
+node_modules
+dist
+build
+package-lock.json
+extension/axe.min.js
+api/combined.log
+api/error.log

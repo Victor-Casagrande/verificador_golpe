@@ -15,18 +15,12 @@ router.get("/global", securityAnalyticsController.getGlobalSecurityOverview);
  * @route GET /api/analytics/security/community
  * @desc Retorna o balanço de feedbacks e falsos positivos gerados pelas heurísticas
  */
-router.get(
-  "/community",
-  securityAnalyticsController.getCommunityFeedbackOverview,
-);
+router.get("/community", securityAnalyticsController.getCommunityFeedbackOverview);
 
 /**
  * @route GET /api/analytics/security/ranking/hosts
  * @desc Retorna o ranking de domínios perigosos com limite configurável via query (?limit=X)
  */
-router.get(
-  "/ranking/hosts",
-  securityAnalyticsController.getDangerousHostsRanking,
-);
+router.get("/ranking/hosts", securityAnalyticsController.getDangerousHostsRanking);
 
 module.exports = router;

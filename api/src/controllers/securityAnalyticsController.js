@@ -1,3 +1,6 @@
+/**
+ * Analytics agregados de segurança (autenticado) — volumetria e hosts perigosos.
+ */
 const securityAnalyticsRepository = require("../repositories/securityAnalyticsRepository");
 
 const getGlobalSecurityOverview = async (req, res, next) => {
@@ -10,18 +13,14 @@ const getGlobalSecurityOverview = async (req, res, next) => {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error(
-      "[Security Analytics Controller] Erro em getGlobalSecurityOverview:",
-      error,
-    );
+    console.error("[Security Analytics Controller] Erro em getGlobalSecurityOverview:", error);
     next(error);
   }
 };
 
 const getCommunityFeedbackOverview = async (req, res, next) => {
   try {
-    const feedbackStats =
-      await securityAnalyticsRepository.getCommunityFeedbackStats();
+    const feedbackStats = await securityAnalyticsRepository.getCommunityFeedbackStats();
 
     return res.status(200).json({
       success: true,
@@ -29,10 +28,7 @@ const getCommunityFeedbackOverview = async (req, res, next) => {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error(
-      "[Security Analytics Controller] Erro em getCommunityFeedbackOverview:",
-      error,
-    );
+    console.error("[Security Analytics Controller] Erro em getCommunityFeedbackOverview:", error);
     next(error);
   }
 };
@@ -48,8 +44,7 @@ const getDangerousHostsRanking = async (req, res, next) => {
       });
     }
 
-    const ranking =
-      await securityAnalyticsRepository.getMostDangerousHosts(limit);
+    const ranking = await securityAnalyticsRepository.getMostDangerousHosts(limit);
 
     return res.status(200).json({
       success: true,
@@ -58,10 +53,7 @@ const getDangerousHostsRanking = async (req, res, next) => {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error(
-      "[Security Analytics Controller] Erro em getDangerousHostsRanking:",
-      error,
-    );
+    console.error("[Security Analytics Controller] Erro em getDangerousHostsRanking:", error);
     next(error);
   }
 };

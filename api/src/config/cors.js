@@ -33,8 +33,8 @@ const isLocalhostOrigin = (origin) => {
 };
 
 const isChromeExtension = (origin) => {
-  const allowedExtension = process.env.EXTENSION_ID 
-    ? `chrome-extension://${process.env.EXTENSION_ID}` 
+  const allowedExtension = process.env.EXTENSION_ID
+    ? `chrome-extension://${process.env.EXTENSION_ID}`
     : null;
 
   if (allowedExtension && origin === allowedExtension) {
@@ -51,9 +51,7 @@ const isChromeExtension = (origin) => {
 const isDeployPreviewHost = (origin) => {
   try {
     const { hostname } = new URL(origin);
-    return (
-      hostname.endsWith(".vercel.app") || hostname.endsWith(".onrender.com")
-    );
+    return hostname.endsWith(".vercel.app") || hostname.endsWith(".onrender.com");
   } catch {
     return false;
   }
@@ -84,12 +82,7 @@ const createCorsOptions = () => {
 
   return {
     methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE", "OPTIONS"],
-    allowedHeaders: [
-      "Content-Type",
-      "Authorization",
-      "Accept",
-      "X-Requested-With",
-    ],
+    allowedHeaders: ["Content-Type", "Authorization", "Accept", "X-Requested-With"],
     optionsSuccessStatus: 204,
     origin(origin, callback) {
       // curl, Postman, Swagger same-origin, health checks

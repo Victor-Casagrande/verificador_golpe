@@ -15,9 +15,7 @@
 
 export const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") ||
-  (import.meta.env.PROD
-    ? "https://verificador-golpe.onrender.com"
-    : "http://localhost:3000");
+  (import.meta.env.PROD ? "https://verificador-golpe.onrender.com" : "http://localhost:3000");
 
 export class ApiError extends Error {
   constructor(message, { status, body } = {}) {
@@ -76,10 +74,7 @@ export const request = async (
       signal,
     });
   } catch (networkError) {
-    throw new ApiError(
-      `Falha de rede ao chamar ${path}: ${networkError.message}`,
-      { status: 0 },
-    );
+    throw new ApiError(`Falha de rede ao chamar ${path}: ${networkError.message}`, { status: 0 });
   }
 
   const parsed = await parseBody(response);
@@ -96,9 +91,6 @@ export const request = async (
 };
 
 export const get = (path, options) => request(path, { ...options, method: "GET" });
-export const post = (path, body, options) =>
-  request(path, { ...options, method: "POST", body });
-export const put = (path, body, options) =>
-  request(path, { ...options, method: "PUT", body });
-export const del = (path, options) =>
-  request(path, { ...options, method: "DELETE" });
+export const post = (path, body, options) => request(path, { ...options, method: "POST", body });
+export const put = (path, body, options) => request(path, { ...options, method: "PUT", body });
+export const del = (path, options) => request(path, { ...options, method: "DELETE" });

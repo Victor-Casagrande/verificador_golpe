@@ -133,7 +133,10 @@ const options = {
         SecurityVerdict: {
           type: "object",
           properties: {
-            is_danger: { type: "boolean", description: "true se a URL foi classificada como perigosa" },
+            is_danger: {
+              type: "boolean",
+              description: "true se a URL foi classificada como perigosa",
+            },
             status: {
               type: "string",
               enum: [
@@ -215,12 +218,7 @@ const options = {
             },
             report_type: {
               type: "string",
-              enum: [
-                "false_positive",
-                "confirmed_scam",
-                "accessibility_issue",
-                "other",
-              ],
+              enum: ["false_positive", "confirmed_scam", "accessibility_issue", "other"],
             },
             comment: { type: "string", maxLength: 2000 },
           },

@@ -13,12 +13,7 @@ const Icon = {
   analyze: (
     <svg viewBox="0 0 24 24" fill="none">
       <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
-      <path
-        d="M20 20l-3.2-3.2"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
+      <path d="M20 20l-3.2-3.2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   ),
   history: (
@@ -130,9 +125,7 @@ export default function Dashboard({ onBackToSite }) {
   const current = SECTIONS.find((s) => s.id === active) || SECTIONS[0];
   const ActiveSection = current.Component;
 
-  const lockedIds = isAuthenticated
-    ? []
-    : SECTIONS.filter((s) => s.requiresAuth).map((s) => s.id);
+  const lockedIds = isAuthenticated ? [] : SECTIONS.filter((s) => s.requiresAuth).map((s) => s.id);
 
   const handleSelect = (id) => {
     if (lockedIds.includes(id)) {

@@ -23,9 +23,7 @@ export default function ReportsSection() {
       } catch (err) {
         if (!cancelled)
           setError(
-            err instanceof ApiError
-              ? err.message
-              : "Não foi possível carregar as denúncias.",
+            err instanceof ApiError ? err.message : "Não foi possível carregar as denúncias.",
           );
       } finally {
         if (!cancelled) setLoading(false);
@@ -67,21 +65,15 @@ export default function ReportsSection() {
                     <span>{toNumber(row.scam_reports)} golpe</span>
                   )}
                   {toNumber(row.false_positive_reports) > 0 && (
-                    <span>
-                      {toNumber(row.false_positive_reports)} falso-positivo
-                    </span>
+                    <span>{toNumber(row.false_positive_reports)} falso-positivo</span>
                   )}
                   {toNumber(row.accessibility_reports) > 0 && (
-                    <span>
-                      {toNumber(row.accessibility_reports)} acessibilidade
-                    </span>
+                    <span>{toNumber(row.accessibility_reports)} acessibilidade</span>
                   )}
                 </div>
               </div>
               <div className={common.rowAside}>
-                <Badge tone="bad">
-                  {toNumber(row.report_count)} denúncias
-                </Badge>
+                <Badge tone="bad">{toNumber(row.report_count)} denúncias</Badge>
               </div>
             </div>
           ))}

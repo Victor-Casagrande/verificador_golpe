@@ -1,3 +1,6 @@
+/**
+ * Formata uma linha de `url_analyses` para resposta da API (histórico/timeline).
+ */
 const formatAnalysisRow = (row) => ({
   id: row.id,
   url: row.url,
@@ -9,9 +12,7 @@ const formatAnalysisRow = (row) => ({
   quality_rating: row.quality_rating,
   violations_count:
     row.violations_count ??
-    (Array.isArray(row.accessibility_violations)
-      ? row.accessibility_violations.length
-      : undefined),
+    (Array.isArray(row.accessibility_violations) ? row.accessibility_violations.length : undefined),
   axe_source: row.axe_source,
   security_from_cache: row.security_from_cache,
   created_at: row.created_at,

@@ -1,3 +1,6 @@
+/**
+ * Sanitização e formatação de violações axe para persistência e modo dev.
+ */
 const DEV_MAX_VIOLATIONS = 50;
 const DEV_MAX_NODES_PER_VIOLATION = 10;
 
@@ -9,7 +12,7 @@ const sanitizeViolations = (violations) => {
     impact: violation.impact,
     description: violation.description,
     helpUrl: violation.helpUrl,
-    nodes_count: Array.isArray(violation.nodes) ? violation.nodes.length : 0
+    nodes_count: Array.isArray(violation.nodes) ? violation.nodes.length : 0,
   }));
 };
 
@@ -27,8 +30,8 @@ const formatDetailedViolations = (violations) => {
       html: node.html,
       target: node.target,
       failureSummary: node.failureSummary,
-      impact: node.impact
-    }))
+      impact: node.impact,
+    })),
   }));
 };
 
@@ -36,5 +39,5 @@ module.exports = {
   sanitizeViolations,
   formatDetailedViolations,
   DEV_MAX_VIOLATIONS,
-  DEV_MAX_NODES_PER_VIOLATION
+  DEV_MAX_NODES_PER_VIOLATION,
 };
