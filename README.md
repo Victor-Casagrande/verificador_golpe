@@ -1,336 +1,198 @@
 # Sentinela APL — Verificador de Golpes e Auditoria de Acessibilidade
 
-Sentinela é um projeto acadêmico do IFC (Desenvolvimento Web II, Engenharia
-de Software I e Projeto Aplicado I) composto por:
+Projeto acadêmico integrador (IFC — Desenvolvimento Web II, Engenharia de Software I e Projeto Aplicado I) que combina **verificação de segurança de URLs**, **auditoria de acessibilidade web** e **participação comunitária** em uma plataforma completa.
 
-- uma **API Node.js / Express 5** que verifica se uma URL é maliciosa e
-  audita a acessibilidade da página com [axe-core](https://github.com/dequelabs/axe-core);
-- uma **extensão Chrome (Manifest V3)** que dispara essa verificação a cada
-  página visitada e bloqueia páginas perigosas com um overlay vermelho;
-- um banco **PostgreSQL** que guarda histórico, denúncias, contas e
-  rankings de sites.
-
-Protótipo de UI no [Figma](https://www.figma.com/design/cSpctw3HFH3WtnrcE4Sxm0/Prot%C3%B3tipo-Golpe?node-id=0-1&t=G2b8J3uETeqTlqHO-1).
-
-### Arquitetura Cloud (Free Tier)
-O projeto opera na nuvem utilizando os seguintes serviços:
-- **Frontend:** Vercel (React/Vite).
-- **Backend:** Render (Node.js/Express). **Aviso de Cold Start:** devido ao plano gratuito, a API adormece após 15 minutos sem tráfego. A primeira análise da extensão após esse período pode levar até 40 segundos para "acordar" o servidor e inicializar o Puppeteer.
-- **Banco de Dados:** Supabase (PostgreSQL). O ambiente de produção utiliza a porta de Connection Pooling (`6543` / PgBouncer) em "Transaction Mode" para otimizar conexões e não estourar o limite de conexões simultâneas do plano gratuito. O ambiente Docker local continua usando a porta de conexão direta (`5432`).
+Protótipo de UI: [Figma](https://www.figma.com/design/cSpctw3HFH3WtnrcE4Sxm0/Prot%C3%B3tipo-Golpe?node-id=0-1&t=G2b8J3uETeqTlqHO-1)
 
 ---
 
-## Sumário
+## Autores
 
-- [Como funciona](#como-funciona)
-- [Estrutura do repositório](#estrutura-do-repositório)
-- [Pré-requisitos](#pré-requisitos)
-- [CI/CD (Integração e Deploy Contínuo)](#cicd-integração-e-deploy-contínuo)
-- [SRE e Segurança](#sre-e-segurança)
-- [Execução Local de Desenvolvimento (Docker)](#execução-local-de-desenvolvimento-docker)
-- [Executando sem Docker (Node + PostgreSQL locais)](#executando-sem-docker-node--postgresql-locais)
-- [Carregando a extensão no Chrome](#carregando-a-extensão-no-chrome)
-- [Variáveis de ambiente](#variáveis-de-ambiente)
-- [Como testar a API](#como-testar-a-api)
-- [Referência da API](#referência-da-api)
-- [Scripts NPM disponíveis](#scripts-npm-disponíveis)
-- [Testes automatizados](#testes-automatizados)
-- [Limitações e issues conhecidas](#limitações-e-issues-conhecidas)
-- [Contribuindo](#contribuindo)
+| Grupo Sentinela APL |
+|---|
+| **Victor Casagrande** |
+| **Lucas Duarte Lopes** |
+| **Matheus Trombetta Degaraes** |
+| **Willighan Tinelli de Souza** |
+
+Repositório: [github.com/Victor-Casagrande/verificador_golpe](https://github.com/Victor-Casagrande/verificador_golpe)
+
+Licenciado sob [GNU GPL v3.0](LICENSE).
 
 ---
 
-## Como funciona
+## O que o Sentinela faz
 
-Cada vez que o usuário navega para uma página, a extensão dispara uma
-requisição `POST /urls/analyze` para a API. A API então:
+O Sentinela protege o usuário durante a navegação e avalia a qualidade de acessibilidade dos sites visitados.
 
-1. **Cache de segurança (24 h)** — procura no PostgreSQL uma análise recente
-   da mesma URL para evitar chamadas externas redundantes.
-2. **Google Safe Browsing** — caso seja _cache miss_, consulta a API oficial
-   do Google para detectar phishing, malware e engenharia social.
-3. **Heurísticas locais** — aplica 7 regras estruturais (IP literal, TLDs de
-   baixa reputação, DNS dinâmico, palavras-chave suspeitas, etc.) como
-   segunda camada.
-4. **axe-core via Puppeteer** — abre a página em um Chromium headless,
-   executa o axe e gera uma nota de acessibilidade (0–100).
-5. **Persiste** a análise (`url_analyses`) vinculada ao usuário logado,
-   quando houver token. A extensão recebe o veredito de segurança e a nota;
-   se o site for perigoso, mostra o overlay vermelho bloqueando a página.
+| Componente | Papel |
+|---|---|
+| **Extensão Chrome (MV3)** | Analisa cada página visitada, bloqueia sites perigosos com overlay vermelho e exibe a nota de acessibilidade |
+| **API Node.js / Express** | Orquestra verificação de segurança, auditoria axe-core e persistência de dados |
+| **Frontend React (Vercel)** | Dashboard com histórico, rankings e analytics |
+| **PostgreSQL** | Histórico de análises, contas, denúncias e agregações |
+
+---
+
+## Funcionalidades
+
+### Verificação de segurança
+
+Cada URL passa por três camadas, nesta ordem:
+
+1. **Cache de 24 horas** — reutiliza análises recentes da mesma URL.
+2. **Google Safe Browsing** — detecta phishing, malware e engenharia social.
+3. **Heurísticas locais** — sete regras estruturais quando o Google não reporta ameaça:
+
+| Regra | O que sinaliza |
+|---|---|
+| IP literal no hostname | URLs com endereço numérico direto |
+| Excesso de hífens | 3 ou mais hífens no domínio |
+| TLD de baixa reputação | `.tk`, `.ml`, `.ga`, `.cf`, `.gq`, `.xyz`, `.top`, `.pw` |
+| DNS dinâmico / túnel | `ngrok.io`, `duckdns.org`, `noip.com`, `ddns.net`, etc. |
+| Palavras-chave suspeitas | `login`, `secure`, `banking`, `verify`, `password`, etc. |
+| Subdomínios excessivos | 5 ou mais segmentos no hostname |
+| URL muito longa | Mais de 200 caracteres |
+
+**Status possíveis:** `GOLPE CONFIRMADO` · `Aparência Suspeita (Heurística)` · `Erro de Formato` · `Seguro`
+
+### Auditoria de acessibilidade
+
+A API abre a página em Chromium headless e executa [axe-core](https://github.com/dequelabs/axe-core). O resultado inclui:
+
+| Campo | Significado |
+|---|---|
+| `quality_rating` | Nota de 0 a 100 — **maior = melhor** |
+| `accessibility_score` | Penalidade acumulada — **maior = pior** |
+| `passes_count` | Regras que a página passou (usado no cálculo da nota) |
+| `violations_count` | Quantidade de violações encontradas |
+| `axe_source` | `server` (Puppeteer), `client` (fallback da extensão) ou `skipped` |
+
+**Modelo de pontuação** (projetado para não punir injustamente sites grandes):
+
+- Pesos por impacto: critical × 10, serious × 5, moderate × 2, minor × 1.
+- Retornos decrescentes por repetição da mesma regra (`1 + log₂(nós)`, com teto).
+- **Curva exponencial:** a nota final é calculada por
+
+  `quality_rating = 100 × e^(-penalidade_efetiva / 150)`
+
+  onde `penalidade_efetiva` é a penalidade acumulada (ajustada pelo amortecimento de cobertura). Com penalidade zero a nota é 100; conforme as violações aumentam, a nota decai de forma suave — nunca cai abruptamente a zero, mesmo em páginas com muitos problemas.
+- Amortecimento por cobertura: páginas que passam na maioria das regras recebem nota mais clemente.
+
+### Contas e autenticação
+
+- Registro e login com **e-mail e senha**.
+- Login social via **GitHub** e **Google**.
+- **Contas unificadas por e-mail** — o mesmo endereço em provedores diferentes vincula-se a um único histórico.
+- JWT com revogação em logout (blacklist).
+
+### Histórico, denúncias e rankings
+
+- Histórico pessoal de análises (autenticado).
+- Timeline pública de notas por URL.
+- Denúncias com tipos: `false_positive`, `confirmed_scam`, `accessibility_issue`, `other`.
+- Rankings públicos: melhores/piores sites em acessibilidade e sites mais denunciados.
+- Analytics agregados (autenticado): volumetria de ameaças, cache hits, médias globais de acessibilidade.
+
+---
+
+## Fluxo de análise
 
 ```mermaid
 flowchart LR
     EXT[Extensão Chrome] -->|POST /urls/analyze| API[API Express]
-    API --> RL[Rate limit + Helmet + CORS]
     API --> CACHE[(Cache 24h)]
     API --> GSB[Google Safe Browsing]
     API --> HEU[Heurísticas locais]
     API --> AXE[axe-core + Puppeteer]
     API --> DB[(PostgreSQL)]
-    DB --> RANK[/rankings/* e /api/analytics/*/]
+    DB --> RANK[Rankings e Analytics]
 ```
 
-> A API é resiliente a quedas do PostgreSQL: o veredito de segurança e a
-> nota de acessibilidade continuam sendo devolvidos mesmo com o banco
-> indisponível — apenas o histórico fica marcado como não-persistido
-> (`persistence.persisted: false`).
+A extensão envia `POST /urls/analyze` a cada navegação. Se o site for perigoso, um overlay vermelho bloqueia a página. Se for seguro, a nota de acessibilidade aparece no console do navegador.
 
 ---
 
-## Estrutura do repositório
+## Peculiaridades e comportamento esperado
 
-```
-verificador_golpe/
-├── docker-compose.yml          # API + PostgreSQL prontos para subir
-├── .env.example                # Modelo de variáveis (copiar para .env)
-├── README.md
-│
-├── api/                        # Backend Node.js (Express 5)
-│   ├── Dockerfile              # node:20-bookworm-slim + Chromium
-│   ├── package.json
-│   ├── scripts/
-│   │   ├── gerarJWT.js         # Gera JWT a partir de um usuário do banco
-│   │   ├── simulate-login.js   # Simulação interativa: local | GitHub | Google
-│   │   └── test-urls-local.js  # Smoke test de URLs contra a API
-│   ├── tests/                  # node:test (unit + integration)
-│   │   ├── unit/
-│   │   ├── integration/
-│   │   ├── fixtures/test-urls.json
-│   │   └── helpers/
-│   └── src/
-│       ├── app.js              # Express, middlewares, rotas
-│       ├── server.js           # Bootstrap + shutdown gracioso
-│       ├── config/             # database, swagger, oauthProviders
-│       ├── controllers/        # verificação, auth, oauth, history, reports, analytics
-│       ├── middlewares/        # auth, validação, rate-limit, error handler
-│       ├── repositories/       # acesso ao PostgreSQL
-│       ├── routes/             # definição das rotas Express
-│       ├── services/           # verificationService, axeService, oauthService, ...
-│       ├── oauth/              # fetchGithubProfile, fetchGoogleProfile
-│       ├── utils/              # heurísticas, jwt, logger, validators, ...
-│       └── docs/paths/         # anotações OpenAPI para o Swagger
-│
-├── extension/                  # Pasta carregada como extensão Chrome
-│   ├── manifest.json
-│   └── content.js              # Dispara /urls/analyze em cada página
-│
-├── popup.html                  # ATENÇÃO: ver "Issues conhecidas" abaixo —
-├── popup.css                   #   esses 4 arquivos são referenciados pelo
-├── popup.js                    #   manifest mas estão na raiz, não em extension/.
-├── background.js               #   A extensão NÃO carrega assim sem ajuste.
-│
-└── db/init/                    # SQL aplicado na 1ª subida do Postgres
-    ├── 01-schema.sql           # url_analyses
-    ├── 02-auth-history-reports.sql   # users, reports, FK do histórico
-    ├── 03-oauth.sql            # oauth_accounts + usuários de teste
-    └── 04-axe-analytics.sql    # site_host, quality_rating, axe_source, ...
-```
+| Comportamento | Descrição |
+|---|---|
+| **Resiliência ao banco** | Se o PostgreSQL estiver indisponível, a análise de segurança e acessibilidade **continua funcionando** — apenas o histórico não é salvo (`persistence.persisted: false`) |
+| **Cache de segurança** | Resultados de Safe Browsing/heurísticas são reutilizados por 24 h |
+| **`dev_mode`** | Inclui relatório detalhado das violações axe (respostas muito grandes — usar só em desenvolvimento) |
+| **Análise sem login** | `POST /urls/analyze` funciona sem JWT; com token, vincula ao histórico do usuário |
+| **Extensão** | O `content.js` analisa automaticamente cada página; popup/login da extensão ainda em desenvolvimento |
 
 ---
 
-## Pré-requisitos
+## Instalação e execução
+
+### Pré-requisitos
 
 | Ferramenta | Versão | Necessário para |
 |---|---|---|
-| [Docker](https://www.docker.com/) + Compose v2 | atual | Caminho rápido (API + banco local) |
-| [Node.js](https://nodejs.org/) | 20+ | Desenvolvimento sem Docker |
-| [PostgreSQL](https://www.postgresql.org/) | 16+ | Desenvolvimento sem Docker |
-| Chrome ou Chromium | atual | Extensão + axe no host sem Docker |
-| Chave [Google Safe Browsing](https://console.cloud.google.com/) | — | Verificação de URLs |
-| OAuth App [GitHub](https://github.com/settings/developers) | — | Login social (opcional) |
-| OAuth Client [Google](https://console.cloud.google.com/apis/credentials) | — | Login social (opcional) |
+| [Git](https://git-scm.com/) | atual | Clonar o repositório |
+| [Docker](https://www.docker.com/) + Compose v2 | atual | Caminho recomendado (API + banco) |
+| [Node.js](https://nodejs.org/) | 20+ | Execução sem Docker |
+| [PostgreSQL](https://www.postgresql.org/) | 16+ | Execução sem Docker |
+| Chrome ou Chromium | atual | Extensão e auditoria axe sem Docker |
+| Chave [Google Safe Browsing](https://console.cloud.google.com/) | — | Análise de URLs |
 
----
+OAuth (GitHub/Google) e frontend são opcionais.
 
-## CI/CD (Integração e Deploy Contínuo)
+### 1. Clonar o repositório
 
-- **Continuous Integration (CI):** O pipeline automatizado no arquivo `.github/workflows/main.yml` provisiona localmente o banco de dados e executa uma bateria de validação completa a cada Push ou Pull Request. Ele roda a suíte de testes do Backend (`npm test`), faz o check do build do Frontend, e gera um arquivo compactado (ZIP) preparado da Extensão do Chrome.
-- **Continuous Deployment (CD):** O CD é totalmente autônomo e não depende do GitHub Actions. A cada merge na branch `main`, as integrações nativas da plataforma da Vercel (Frontend) e Render (Backend) interceptam o hook e sobem os respectivos artefatos diretamente para a nuvem.
+```bash
+git clone https://github.com/Victor-Casagrande/verificador_golpe.git
+cd verificador_golpe
+```
 
----
-
-## SRE e Segurança
-
-O backend possui otimizações de nível de produção (SRE) para se manter resiliente a ataques de negação de serviço, estouro de banco (DB Bloat) e rodar de maneira otimizada abaixo da limitação dos 512MB de RAM do Render:
-
-- **Puppeteer Hardening:** Foram implementadas intercepções de rede (bloqueando mídias pesadas), injeção de flags agressivas como `--disable-dev-shm-usage`, e um timeout absoluto de 15 segundos no Chromium para evitar ataques de Tarpit com páginas que não terminam de carregar.
-- **Cache L1 para JWT:** A validação e checagem de Blocklist de autenticação é amortecida na memória por um cache `Map` (Limitado a 10.000 chaves e TTL de 60s), blindando a instância contra excesso de I/O em consultas PostgreSQL seguidas.
-- **Advisory Locks:** As rotinas programadas diárias (Job de Garbage Collection às 03:00) utilizam travas exclusivas de transação do PostgreSQL (`pg_try_advisory_xact_lock()`) prevenindo race conditions ou corrompimento de tabelas quando múltiplas instâncias da API tentam executar a ação paralela.
-- **Anti-Bloat:** Proteção contra esgotamento do disco através de Rate Limiters severos (máximo 5 denúncias a cada 15 min por IP) e restrições críticas do limite do payload nas rotas (como textos cortados obrigatoriamente a 500 caracteres).
-- **Proteção de CORS Exclusiva:** O backend implementa o bloqueio cross-origin a nível estrito, limitando o consumo e as respostas da API apenas aos domínios da Vercel em produção e ao `EXTENSION_ID` oficial do Chrome configurado.
-
----
-
-## Execução Local de Desenvolvimento (Docker)
-
-Esta execução usa Docker Compose para subir o ambiente local. **Ele deve ser tratado como um ambiente estrito de Desenvolvimento**, não como via de produção.
-
-### 1. Copie e preencha o `.env`
+### 2. Configurar variáveis de ambiente
 
 ```bash
 cp .env.example .env
 ```
 
-Edite o `.env` na raiz e preencha **no mínimo**:
+Edite `.env` na **raiz do projeto** e preencha no mínimo:
 
-- `GOOGLE_API_KEY` — chave do Google Safe Browsing.
-- `JWT_SECRET` — string longa e aleatória.
+- `GOOGLE_API_KEY` — chave da API Google Safe Browsing
+- `JWT_SECRET` — string longa e aleatória
 
-OAuth (`GITHUB_*` / `GOOGLE_*`) é opcional, mas necessário se você quiser
-testar login social pelo `simulate-login` ou pela extensão.
+OAuth (`GITHUB_*`, `GOOGLE_*`) só é necessário para testar login social.
 
-### 2. Suba a API e o banco
+---
+
+### Opção A — Com Docker (recomendado)
+
+Sobe a **API** e o **PostgreSQL** com um comando. O Chromium já vem na imagem.
 
 ```bash
 docker compose up --build
 ```
 
-Para rodar em segundo plano: `docker compose up --build -d`.
-
-> Sempre que mexer em `db/init/*.sql`, derrube o volume antes de subir
-> de novo para o Postgres reaplicar os scripts:
-> ```bash
-> docker compose down -v && docker compose up --build
-> ```
-
-### 3. Verifique
+Em segundo plano:
 
 ```bash
-curl http://localhost:3000/api/status
-# {"sucesso":true,"mensagem":"API do SentryVZN operando normalmente.", ...}
+docker compose up --build -d
 ```
 
-Acesse a documentação interativa: <http://localhost:3000/api/docs>
+| Recurso | URL |
+|---|---|
+| Health check | http://localhost:3000/api/status |
+| Swagger UI | http://localhost:3000/api/docs |
+| OpenAPI JSON | http://localhost:3000/api/docs.json |
 
-### Comandos úteis
+**Comandos úteis**
 
 | Comando | O que faz |
 |---|---|
-| `docker compose logs -f api` | Logs da API em tempo real |
-| `docker compose logs -f db` | Logs do PostgreSQL |
+| `docker compose logs -f api` | Logs da API |
 | `docker compose down` | Para os containers |
-| `docker compose down -v` | Para e **apaga o volume do banco** |
+| `docker compose down -v` | Para e **apaga o banco** |
 
----
+> Após alterar scripts em `db/init/`, recrie o volume: `docker compose down -v && docker compose up --build`
 
-## Executando sem Docker (Node + PostgreSQL locais)
-
-### 1. Configure o PostgreSQL
-
-Suba um Postgres 16 local e aplique os scripts em `db/init/` **na ordem
-numérica** (01 → 04). Os scripts criam:
-
-- Tabela `url_analyses` (URLs analisadas + violações axe + pontuação).
-- Tabela `users` (auth local + slot para OAuth).
-- Tabela `reports` (denúncias dos usuários).
-- Tabela `oauth_accounts` (vínculos GitHub/Google).
-- 4 usuários de teste — **todos com senha `123456`**: `admin@test.com`,
-  `joao@test.com`, `maria@test.com`, e `oauth@test.com` (apenas OAuth, sem
-  senha).
-
-### 2. Configure o `.env`
-
-Como o backend usa `dotenv.config()` (sem caminho explícito), ele só
-carrega o `.env` que estiver no diretório onde o processo Node foi
-iniciado. Em desenvolvimento local **rode o servidor sempre a partir de
-`api/`** e coloque o `.env` lá:
-
-```bash
-cp .env.example api/.env
-```
-
-Edite `api/.env`:
-
-```ini
-DB_HOST=localhost                    # No Docker é "db"; sem Docker use "localhost"
-PUPPETEER_EXECUTABLE_PATH=C:\Program Files\Google\Chrome\Application\chrome.exe
-GOOGLE_API_KEY=sua_chave_aqui
-JWT_SECRET=string_longa_aleatoria
-```
-
-> Veja [Issues conhecidas](#limitações-e-issues-conhecidas) sobre esse
-> comportamento do `dotenv`.
-
-### 3. Suba a API
-
-```bash
-cd api
-npm install
-npm run dev          # nodemon com hot reload
-# ou: npm start      # sem reload
-```
-
-A API responde em `http://localhost:3000`. Os mesmos endpoints (`/api/status`,
-`/api/docs`) funcionam.
-
----
-
-## Carregando a extensão no Chrome
-
-1. Abra `chrome://extensions/`.
-2. Ative o **Modo do desenvolvedor**.
-3. Clique em **Carregar sem compactação** e selecione a pasta `extension/`.
-4. Com a API rodando em `http://localhost:3000`, navegue para qualquer
-   site para disparar a análise.
-   - Se a URL for perigosa, um overlay vermelho cobre a página.
-   - Se for segura, a nota de acessibilidade aparece no console
-     (`F12 → Console`):
-     ```
-     Sentinela — nota de acessibilidade: 89/100 (2 violações, fonte: server)
-     ```
-
-> **Atenção** — a parte que funciona hoje é só o `content.js` (overlay e
-> análise automática). O popup do toolbar e o login pela extensão estão
-> com arquivos fora de lugar; ver [Issues conhecidas](#limitações-e-issues-conhecidas).
-
----
-
-## Variáveis de ambiente
-
-As variáveis abaixo são cruciais para a implantação na nuvem e ambiente local. Confira `.env.example` para os valores de fallback e detalhes completos de implementação. Nunca faça commit de um arquivo `.env` para o Git.
-
-### Vercel (Frontend — React)
-
-| Variável | Obrigatório | Descrição |
-|---|---|---|
-| `VITE_API_URL` | sim | Endereço URL da API (ex: https://sentinela-api.onrender.com) |
-| `VITE_EXTENSION_ID` | recomendado | ID da extensão para comunicação via `postMessage` |
-
-### Render / Supabase (Backend — Node.js/PostgreSQL)
-
-| Variável | Obrigatório | Descrição |
-|---|---|---|
-| `PORT` | não (default 3000) | Porta da API |
-| `GOOGLE_API_KEY` | **sim** | Google Safe Browsing API Key |
-| `JWT_SECRET` | **sim** | Segredo de assinatura dos tokens de sessão |
-| `JWT_EXPIRES_IN` | não (default `7d`) | Validade do JWT |
-| `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GITHUB_CALLBACK_URL` | só para OAuth | Credenciais da OAuth App (GitHub) |
-| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_CALLBACK_URL` | só para OAuth | Credenciais do OAuth Client (Google) |
-| `OAUTH_SUCCESS_REDIRECT` | recomendado | URL para redirecionamento frontend no login OAuth (`/auth/success` default) |
-| `AXE_ENABLED` | não (default `true`) | Flag para desativar axe-core puppeteer no servidor (`false`) |
-| `AXE_TIMEOUT_MS` | não (default `15000`) | Timeout rígido em MS do ambiente isolado Puppeteer |
-| `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_NAME`, `DB_PORT` | **sim** | Configurações de Conexão com Supabase |
-| `DB_CONNECT_TIMEOUT_MS`, `DB_IDLE_TIMEOUT_MS` | não | Timeouts de resiliência e fail-fast da lib Node-PG (`pg`) |
-| `CORS_ALLOWED_ORIGINS` | sim | Domínios frontend permitidos comunicarem-se com a API (URL da Vercel) |
-
----
-
-## Como testar a API
-
-Os caminhos abaixo assumem a API rodando em `http://localhost:3000`.
-
-### 1) Health check
-
-```bash
-curl http://localhost:3000/api/status
-```
-
-### 2) Swagger interativo
-
-Abra <http://localhost:3000/api/docs> no navegador. O JSON OpenAPI fica em
-`/api/docs.json`.
-
-### 3) Analisar uma URL (sem login)
+**Testar uma análise**
 
 ```bash
 curl -X POST http://localhost:3000/urls/analyze \
@@ -338,328 +200,211 @@ curl -X POST http://localhost:3000/urls/analyze \
   -d '{"url":"https://example.com"}'
 ```
 
-### 4) Smoke test em lote
+---
 
-Roda análises contra a fixture `api/tests/fixtures/test-urls.json` (URLs
-seguras, suspeitas e inválidas):
+### Opção B — Sem Docker
+
+Requer Node.js, PostgreSQL e Chrome/Chromium instalados localmente.
+
+#### B.1 — Banco de dados
+
+Crie um banco PostgreSQL 16 e aplique os scripts de `db/init/` **na ordem numérica** (`01` → `06`):
+
+```bash
+psql -U postgres -c "CREATE DATABASE sentinela;"
+psql -U postgres -d sentinela -f db/init/01-schema.sql
+psql -U postgres -d sentinela -f db/init/02-auth-history-reports.sql
+psql -U postgres -d sentinela -f db/init/03-oauth.sql
+psql -U postgres -d sentinela -f db/init/04-axe-analytics.sql
+psql -U postgres -d sentinela -f db/init/05-blacklist-cleanup-extensions.sql
+psql -U postgres -d sentinela -f db/init/06-accessibility-score-numeric.sql
+```
+
+Usuários de teste criados pelo seed (`03-oauth.sql`), senha **`123456`**:
+
+| E-mail | Uso |
+|---|---|
+| `admin@test.com` | Admin |
+| `joao@test.com` | Usuário comum |
+| `maria@test.com` | Usuário comum |
+
+#### B.2 — API
 
 ```bash
 cd api
-npm run test:urls
+cp ../.env.example .env
 ```
 
-### 5) Logar como usuário de teste
+Ajuste `api/.env` para ambiente local:
 
-Com o servidor de pé, em outro terminal:
+```ini
+DB_HOST=localhost
+DB_PORT=5432
+PUPPETEER_EXECUTABLE_PATH=C:\Program Files\Google\Chrome\Application\chrome.exe
+```
+
+> No Linux/macOS, use o caminho do Chromium instalado no sistema (ex.: `/usr/bin/chromium`).
 
 ```bash
-cd api
-npm run login:simulate
+npm install
+npm run dev        # desenvolvimento (hot reload)
+# ou: npm start    # produção local
 ```
 
-Aparece um menu interativo com três opções:
+A API responde em http://localhost:3000.
 
-```
-Sentinela — simulação de login
-  API alvo: http://localhost:3000
-  ----------------------------------------------------------
-  [1] LOCAL    — e-mail + senha (registra se não existir)
-  [2] GITHUB   — OAuth (configurado | NÃO configurado)
-  [3] GOOGLE   — OAuth (configurado | NÃO configurado)
-  [0] Sair
-```
+---
 
-- **[1] LOCAL** — pede e-mail/senha e tenta `POST /auth/login`; se a conta
-  não existir, oferece registrar. Usa qualquer um dos quatro usuários do
-  seed (`admin@test.com`, `joao@test.com`, `maria@test.com` — senha
-  `123456`).
-- **[2] / [3]** — confirma se o provedor está habilitado, abre a URL de
-  autorização no navegador e aguarda você colar de volta a URL final do
-  callback (ou o JSON, ou só o JWT). O OAuth requer `..._CLIENT_ID`,
-  `..._CLIENT_SECRET` e `..._CALLBACK_URL` no `.env`.
+### Frontend (opcional)
 
-Modo não-interativo (CI/scripts):
+Dashboard React para histórico, rankings e analytics.
 
 ```bash
-npm run login:simulate -- --flow=local --email=foo@bar.com --password=senha123 --name="Foo"
-npm run login:simulate -- --flow=github
-npm run login:simulate -- --flow=google --no-open --once
+cd frontend
+cp .env.example .env
+npm install
+npm run dev
 ```
 
-### 6) Gerar JWT a partir de um usuário do banco
+Abre em http://localhost:5173. Confirme que `VITE_API_BASE_URL` aponta para a API (`http://localhost:3000`).
+
+---
+
+### Extensão Chrome (opcional)
+
+1. Abra `chrome://extensions/`
+2. Ative **Modo do desenvolvedor**
+3. **Carregar sem compactação** → selecione a pasta `extension/`
+4. Com a API rodando, navegue em qualquer site
+
+Comportamento:
+
+- Site **perigoso** → overlay vermelho bloqueia a página
+- Site **seguro** → nota de acessibilidade no console (`F12 → Console`)
+
+---
+
+### Verificar se tudo funciona
 
 ```bash
-cd api
-npm run jwt                     # lista usuários e pede para escolher
-npm run jwt -- --user-id=1      # direto, sem prompt
+# Health check
+curl http://localhost:3000/api/status
+
+# Análise de URL
+curl -X POST http://localhost:3000/urls/analyze \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://example.com"}'
+
+# Login com usuário de teste (sem Docker)
+curl -X POST http://localhost:3000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@test.com","password":"123456"}'
 ```
 
-O token é assinado com o `JWT_SECRET` do `.env` — nada hardcoded.
+Smoke test em lote (API rodando):
+
+```bash
+cd api && npm run test:urls
+```
+
+---
+
+## Variáveis de ambiente
+
+Consulte `.env.example` para a lista completa. Principais:
+
+| Variável | Obrigatório | Função |
+|---|---|---|
+| `GOOGLE_API_KEY` | sim | Google Safe Browsing |
+| `JWT_SECRET` | sim | Assinatura dos tokens de sessão |
+| `DB_*` | sim | Conexão PostgreSQL |
+| `GITHUB_*` / `GOOGLE_*` | OAuth | Login social |
+| `AXE_ENABLED` | não | Desativa auditoria Puppeteer (`false`) |
+| `CORS_ALLOWED_ORIGINS` | produção | Domínios autorizados a consumir a API |
+| `VITE_API_URL` | frontend | URL da API na Vercel |
+
+> **Produção:** Frontend na Vercel, API no Render, banco no Supabase (porta `6543` com PgBouncer). Docker local usa porta `5432`.
 
 ---
 
 ## Referência da API
 
-Rotas protegidas usam:
+Documentação interativa completa em **`/api/docs`**.
 
-```
-Authorization: Bearer <jwt>
-```
+Rotas protegidas exigem `Authorization: Bearer <jwt>`.
 
-Documentação completa e schemas em `/api/docs`.
-
-### Health & metadata
-
-| Método | Rota | Auth | Descrição |
-|---|---|---|---|
-| `GET` | `/` | público | Página de boas-vindas com HATEOAS |
-| `GET` | `/api/status` | público | Health check (sempre 200; sinaliza dependências) |
-| `GET` | `/api/docs` | público | Swagger UI |
-| `GET` | `/api/docs.json` | público | OpenAPI 3 em JSON |
-
-### Autenticação local
-
-| Método | Rota | Body | Resposta |
-|---|---|---|---|
-| `POST` | `/auth/register` | `{ name, email, password }` | `201` + `{ token, user }` |
-| `POST` | `/auth/login` | `{ email, password }` | `200` + `{ token, user }` |
-
-### Autenticação OAuth (GitHub, Google)
-
-O **e-mail é a chave da conta** — autenticar com GitHub e Google usando o
-mesmo e-mail unifica tudo em um único `users.id` e um único histórico.
+### Sistema
 
 | Método | Rota | Descrição |
 |---|---|---|
-| `GET` | `/auth/oauth/providers` | Lista provedores configurados no servidor |
-| `GET` | `/auth/oauth/github` | Redireciona para autorização GitHub |
-| `GET` | `/auth/oauth/google` | Redireciona para autorização Google |
-| `GET` | `/auth/oauth/:provider/callback` | Callback — troca o code por JWT |
-| `GET` | `/auth/success` | Página de aterrissagem que exibe o JWT com botão "Copiar" + `postMessage` para popups e `chrome.runtime.sendMessage` para a extensão |
+| `GET` | `/` | Índice HATEOAS |
+| `GET` | `/api/status` | Health check |
+| `GET` | `/api/docs` | Swagger UI |
 
-O fluxo (válido para os dois provedores) é:
+### Autenticação
 
-1. `buildAuthorizeUrl` monta `client_id`, `redirect_uri`, `scope` e um
-   `state` assinado em JWT (10 min de validade) como CSRF.
-2. Provedor redireciona para `/auth/oauth/:provider/callback?code=...&state=...`.
-3. API valida o `state`, troca `code` por `access_token` e busca o perfil
-   (`/user` no GitHub, `/oauth2/v2/userinfo` no Google).
-4. Resolve o usuário por `provider_user_id` → busca por e-mail → cria
-   novo (`password_hash = null`) se não existir.
-5. Devolve `{ token, user }` em JSON **ou** redireciona para
-   `OAUTH_SUCCESS_REDIRECT?token=...`.
+| Método | Rota | Descrição |
+|---|---|---|
+| `POST` | `/auth/register` | Cadastro local |
+| `POST` | `/auth/login` | Login local |
+| `GET` | `/auth/oauth/providers` | Provedores OAuth disponíveis |
+| `GET` | `/auth/oauth/{github\|google}` | Inicia login social |
+| `GET` | `/auth/oauth/{provider}/callback` | Callback OAuth → JWT |
 
-### Verificação de URLs
-
-#### `POST /urls/analyze`
-
-Header `Authorization` é **opcional** — quando enviado, vincula a análise
-ao histórico do usuário.
-
-```json
-{
-  "url": "https://exemplo.com/pagina",
-  "accessibility_report": [],
-  "dev_mode": false
-}
-```
-
-| Campo | Tipo | Obrigatório | Descrição |
-|---|---|---|---|
-| `url` | string | sim | URL http(s) |
-| `accessibility_report` | array | não | Fallback usado se o axe no servidor falhar |
-| `dev_mode` | bool/string | não | Inclui `accessibility.detailed_report` na resposta |
-
-**Resposta (200):**
-
-```json
-{
-  "analysis_id": 1,
-  "security": {
-    "is_danger": false,
-    "status": "Seguro",
-    "reason": "Nenhuma ameaça detectada ...",
-    "from_cache": false
-  },
-  "accessibility": {
-    "report_received": true,
-    "violations_count": 2,
-    "sanitized_violations_stored": 2,
-    "passes_count": 48,
-    "accessibility_score": 25,
-    "quality_rating": 93,
-    "axe_source": "server",
-    "axe_error": null
-  },
-  "persistence": { "persisted": true, "error": null },
-  "cached": false
-}
-```
-
-| Métrica | Significado |
-|---|---|
-| `quality_rating` | 0–100 — **maior = melhor** acessibilidade |
-| `accessibility_score` | Penalidade acumulada — maior = pior |
-| `passes_count` | Regras de acessibilidade que a página **passou** (usado no amortecimento) |
-| `axe_source` | `server` (Puppeteer), `client` (fallback) ou `skipped` |
-
-**Como a nota é calculada (justa por design):**
-
-1. **Penalidade por regra** com pesos por impacto:
-   `critical × 10 + serious × 5 + moderate × 2 + minor × 1`.
-2. **Retornos decrescentes por nós:** cada regra é multiplicada por `1 + log2(nós)`
-   (com teto), então repetir o mesmo problema em dezenas de elementos pesa cada
-   vez menos — uma única regra não zera o site.
-3. **Curva exponencial:** `quality_rating = 100 · e^(-penalidade/150)`. A nota
-   cai suavemente e nunca chega a zero "no grito"; só tende a zero em páginas
-   realmente catastróficas.
-4. **Amortecimento por cobertura:** quando o axe informa quantas regras a página
-   passou (`passes_count`), a penalidade é descontada proporcionalmente — sites
-   que acertam a maioria das verificações recebem uma nota mais clemente.
-
-**Status de segurança possíveis:**
-
-| Status | Significado |
-|---|---|
-| `GOLPE CONFIRMADO` | Google Safe Browsing reportou ameaça |
-| `Aparência Suspeita (Heurística)` | Regra local disparou |
-| `Erro de Formato` | URL inválida ou ilegível |
-| `Seguro` | Sem ameaça detectada |
-
-#### Heurísticas locais (segunda camada)
-
-Aplicadas quando o Safe Browsing não encontra nada. Qualquer regra
-positiva já marca como `Aparência Suspeita (Heurística)`:
-
-| Regra | Detalhe |
-|---|---|
-| IP literal | Hostname é IPv4 (ex.: `http://192.168.0.1/login`) |
-| Excesso de hífens | 3+ hífens no hostname |
-| TLD baixa reputação | `.tk .ml .ga .cf .gq .xyz .top .pw` |
-| DNS dinâmico / túnel | `ngrok.io`, `duckdns.org`, `noip.com`, `ddns.net`, `serveo.net`, `localtunnel.me` |
-| Palavras-chave | `login`, `secure`, `account`, `update`, `banking`, `verify`, `free`, `admin`, `password`, `recover` |
-| Subdomínios excessivos | 5+ segmentos no hostname |
-| URL muito longa | Mais de 200 caracteres |
-
-### Histórico, denúncias e rankings
+### Verificação e histórico
 
 | Método | Rota | Auth | Descrição |
 |---|---|---|---|
-| `GET` | `/users/history?limit&offset&url` | **sim** | Histórico do usuário (paginado; `limit` máx. 100) |
-| `GET` | `/urls/scores/history?url=...` | público | Timeline de notas de uma URL (até 100 entradas) |
-| `POST` | `/reports` | **sim** | Envia denúncia (`{ url, analysis_id?, report_type, comment? }`) |
-| `GET` | `/rankings/accessibility/worst?limit&min_analyses` | público | Sites com piores `quality_rating` médio |
-| `GET` | `/rankings/accessibility/best?limit&min_analyses` | público | Sites com melhores `quality_rating` médio |
-| `GET` | `/rankings/reports/most?limit` | público | Sites mais denunciados |
+| `POST` | `/urls/analyze` | opcional | Análise completa (segurança + acessibilidade) |
+| `GET` | `/users/history` | sim | Histórico do usuário |
+| `GET` | `/urls/scores/history?url=` | público | Evolução de notas de uma URL |
+| `POST` | `/reports` | sim | Enviar denúncia |
+| `GET` | `/reports/mine` | sim | Denúncias do usuário |
 
-`report_type` aceita: `false_positive`, `confirmed_scam`,
-`accessibility_issue`, `other`.
+### Rankings (públicos)
+
+| Método | Rota | Descrição |
+|---|---|---|
+| `GET` | `/rankings/accessibility/worst` | Piores notas médias por host |
+| `GET` | `/rankings/accessibility/best` | Melhores notas médias por host |
+| `GET` | `/rankings/reports/most` | Sites mais denunciados |
 
 ### Analytics (autenticado)
 
-Endpoints agregados para dashboards. Todos exigem JWT.
-
-| Rota | O que retorna |
-|---|---|
-| `GET /api/analytics/security/global` | Volumetria total de análises, ameaças e cache hits |
-| `GET /api/analytics/security/community` | Estatísticas de denúncias cruzadas com origem da análise |
-| `GET /api/analytics/security/ranking/hosts?limit` | Hosts com mais análises perigosas |
-| `GET /api/analytics/accessibility/global` | Médias globais de `quality_rating` e contagem por `axe_source` |
-| `GET /api/analytics/accessibility/ranking/hosts?limit` | Hosts com pior média de acessibilidade |
+| Método | Rota | Descrição |
+|---|---|---|
+| `GET` | `/api/analytics/security/global` | Volumetria de ameaças e cache |
+| `GET` | `/api/analytics/security/community` | Denúncias cruzadas com origem da análise |
+| `GET` | `/api/analytics/security/ranking/hosts` | Hosts mais perigosos |
+| `GET` | `/api/analytics/accessibility/global` | Médias globais de acessibilidade |
+| `GET` | `/api/analytics/accessibility/ranking/hosts` | Hosts com pior acessibilidade |
 
 ---
 
-## Scripts NPM disponíveis
-
-Todos rodam dentro de `api/`.
-
-| Comando | O que faz |
-|---|---|
-| `npm start` | `node src/server.js` (produção / Docker) |
-| `npm run dev` | `nodemon` com hot reload |
-| `npm test` | Testes unit + integration via `node --test` |
-| `npm run test:unit` | Apenas testes unitários |
-| `npm run test:integration` | Apenas integração (supertest contra a app em memória) |
-| `npm run test:urls` | Smoke test contra a API rodando (fixtures de URL) |
-| `npm run jwt` | Gera JWT — lista usuários e pergunta qual usar |
-| `npm run jwt -- --user-id=1` | Gera JWT direto, sem prompt |
-| `npm run login:simulate` | Menu interativo: local / GitHub / Google |
-
-Na raiz:
-
-| Comando | O que faz |
-|---|---|
-| `docker compose up --build` | Sobe API + PostgreSQL |
-| `docker compose down -v` | Derruba e apaga o volume do banco |
-
----
-
-## Testes automatizados
+## Testes
 
 ```bash
-cd api
-npm install
-npm test
+cd api && npm install && npm test
 ```
 
-Hoje existem **13 suítes / 58 testes unitários** + uma suíte de integração:
-
-| Suíte | O que cobre |
-|---|---|
-| `accessibilityScore` | Pontuação ponderada por impacto e `quality_rating` |
-| `axeDetailedReport` | `dev_mode` e formatação detalhada das violações |
-| `urlHeuristics` | 7 regras heurísticas + URLs inválidas |
-| `validators` | Validação de URLs HTTP/HTTPS |
-| `verificationServiceResilience` | Quedas de cache/persistência no Postgres |
-| `oauthState` | CSRF do OAuth (state + nonce) |
-| `oauthProviders` | Resolução de credenciais por env e listagem |
-| `oauthBuildAuthorize` | Montagem da URL de autorização (precisa de `jsonwebtoken`) |
-| `oauthExchangeToken` | Troca de `code` por `access_token` (precisa de `jsonwebtoken`) |
-| `oauthHandleCallback` | Fluxo de callback ponta-a-ponta (precisa de `jsonwebtoken`) |
-| `oauthProfileFetchers` | Leitura de perfil GitHub/Google com `fetch` mockado |
-| `authServiceLocal` | Registro, login, senha errada, conta OAuth sem senha |
-| `oauthServiceFlow` | Simulação completa GitHub e Google (state, exchange, perfil, criação/unificação, JWT) — usa `moduleStubs` para rodar sem deps |
-| `tests/integration/api.routes.test.js` | Smoke test das rotas (supertest) |
-
-> Três suítes (`oauthBuildAuthorize`, `oauthExchangeToken`,
-> `oauthHandleCallback`) requerem `jsonwebtoken` real e portanto exigem
-> `npm install`. As outras usam `tests/helpers/moduleStubs.js` para
-> stub-ar `bcrypt`, `jsonwebtoken`, `pg`, `puppeteer-core` e `fetch`.
-
-Smoke test contra a API em execução:
-
-```bash
-npm run test:urls
-# Fixtures em api/tests/fixtures/test-urls.json
-```
+Smoke test contra API em execução: `npm run test:urls`
 
 ---
-
-## Decisões Arquiteturais e Limitações Conhecidas
-
-Pontos importantes de design e segurança adotados pelo projeto:
-
-- **Modo Degradado ("Fail-Open" Stateless):** Para manter a API como um microsserviço puramente *Stateless* e sem atrasar o usuário, caso o banco de dados (Supabase) fique indisponível, as análises de URL (Safe Browsing e Heurísticas) continuarão funcionando normalmente, mas o salvamento no histórico será ignorado sem gerar fila de repetição offline.
-- **Modo de Desenvolvimento (`dev_mode`):** A flag `dev_mode: true` traz a árvore de HTML cru das páginas auditadas na resposta JSON. Isso converte uma resposta de 3KB em até 1.5MB. Para evitar o esgotamento da cota de banda (Bandwidth) do plano gratuito do Render, isso deve ser mantido estritamente em ambiente local.
-- **Otimização de Imagem Docker (`puppeteer-core`):** O projeto utiliza a biblioteca `puppeteer-core` em vez da versão completa do `puppeteer`. Isso evita o download embutido do Chromium no `package.json`, tornando a imagem Docker cerca de 300MB mais leve e reduzindo os tempos de "Cold Start" do servidor no Render. Ao rodar sem Docker, exige-se apontar o `PUPPETEER_EXECUTABLE_PATH` para o navegador local.
-
----
-
-## Contribuindo
-
-1. Faça uma branch a partir de `main`.
-2. Aplique a mudança em escopo limitado (API + extensão + testes
-   relevantes).
-3. Rode `cd api && npm test` antes de abrir o PR.
-4. Descreva no PR o que mudou e como validar.
 
 ## Licença
 
-ISC (conforme `api/package.json`). Ajuste conforme a política do projeto
-acadêmico.
+Este projeto é software livre licenciado sob a **[GNU General Public License v3.0 (GPL-3.0)](https://www.gnu.org/licenses/gpl-3.0.html)** ou, a seu critério, qualquer versão posterior.
 
-## Equipe
+**Copyright © 2024–2026** — Victor Casagrande, Lucas Duarte Lopes, Matheus Trombetta Degaraes e Willighan Tinelli de Souza.
 
-Projeto integrador das matérias de Desenvolvimento Web II, Engenharia de
-Software I e Projeto Aplicado I — IFC. Repositório:
-[github.com/Victor-Casagrande/verificador_golpe](https://github.com/Victor-Casagrande/verificador_golpe).
+### O que isso significa
+
+| Permissão | Condição |
+|---|---|
+| Usar, estudar e modificar o código | Livremente |
+| Redistribuir cópias | Deve incluir o texto completo da GPL e o código-fonte |
+| Distribuir versões modificadas | Deve permanecer sob GPL e indicar as alterações |
+
+O texto integral da licença está em [`LICENSE`](LICENSE) na raiz do repositório.
+
+> **Dependências de terceiros** (Node.js, React, axe-core, Puppeteer, etc.) possuem licenças próprias — consulte `package-lock.json` de cada pacote.

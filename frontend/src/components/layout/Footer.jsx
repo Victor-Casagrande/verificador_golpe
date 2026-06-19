@@ -65,7 +65,16 @@ export default function Footer() {
 
       <div className={`container ${styles.bottom}`}>
         <span>
-          © {new Date().getFullYear()} Sentinela APL — Licença ISC.
+          © {new Date().getFullYear()} Sentinela APL —{" "}
+          <a
+            href="https://www.gnu.org/licenses/gpl-3.0.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.colLink}
+          >
+            GPL v3
+          </a>
+          .
         </span>
         <span className={styles.bottomRight}>
           Feito com React + Vite, consumindo a API Sentinela.
