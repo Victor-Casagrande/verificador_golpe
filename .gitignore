@@ -11,6 +11,7 @@ api/.cache/
 api/.env
 *.env
 !.env.example
+env.yaml
 
 # LOGS DO NODE/NPM
 logs
