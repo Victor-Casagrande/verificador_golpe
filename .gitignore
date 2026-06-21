@@ -1,32 +1,39 @@
-# DEPENDÊNCIAS DO NODE.JS (Pasta api)
-# Ignora a pasta inteira de dependências, pois o package.json e package-lock.json 
-# já garantem que a equipe baixe as mesmas versões rodando 'npm install'.
+# DEPENDÊNCIAS DO NODE.JS
+# Ignora as pastas de dependências em todos os módulos do monorepo.
+# O package.json e package-lock.json garantem a reprodução exata via 'npm install'.
 
 api/node_modules/
+frontend/node_modules/
 node_modules/
 api/.cache/
 
-# CREDENCIAIS E VARIÁVEIS DE AMBIENTE (Extremamente crítico: impede o vazamento das senhas do PostgreSQL.)
+# CREDENCIAIS E VARIÁVEIS DE AMBIENTE
+# Extremamente crítico: impede o vazamento de senhas do PostgreSQL/Supabase e chaves do GCP.
 .env
 api/.env
+frontend/.env
 *.env
 !.env.example
+!frontend/.env.example
 env.yaml
+api/env.yaml
 
-# LOGS DO NODE/NPM
+# LOGS DO NODE/NPM (inclui arquivos gerados pelo Winston em runtime)
 logs
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+api/combined.log
+api/error.log
 
-# ARQUIVOS DE CACHE DO PYTHON (Pasta extension), (Previne que binários compilados do Python sujem o repositório.) 
+# ARQUIVOS DE CACHE DO PYTHON (Previne que binários compilados do Python sujem o repositório.)
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 
-# ARQUIVOS DO SISTEMA OPERACIONAL E EDITOR (Ignora configurações específicas da sua máquina (Windows/Mac) e do VS Code.)
+# ARQUIVOS DO SISTEMA OPERACIONAL E EDITOR
 .vscode/
 .DS_Store
-Thumbs.db
+Thumbs.db

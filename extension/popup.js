@@ -433,23 +433,15 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 async function loginLocal() {
-  const API_URL =
-    "https://sentinela-api-114594031602.southamerica-east1.run.app";
-  const storage = await chrome.storage.local.get(["jwtToken"]);
-  let jwtToken = storage.jwtToken;
-
   const email = document.getElementById("email").value;
-
   const password = document.getElementById("password").value;
 
   try {
     const response = await fetch(`${API_URL}/auth/login`, {
       method: "POST",
-
       headers: {
         "Content-Type": "application/json",
       },
-
       body: JSON.stringify({
         email,
         password,
@@ -460,7 +452,6 @@ async function loginLocal() {
 
     if (!response.ok) {
       alert(data.message || "Credenciais inválidas");
-
       return;
     }
 
@@ -474,7 +465,6 @@ async function loginLocal() {
     updateView();
   } catch (error) {
     console.error(error);
-
     alert("Erro ao realizar login");
   }
 }

@@ -39,7 +39,7 @@ export default function LoginModal({ open, onClose }) {
         const ids = Array.isArray(res?.providers) ? res.providers.map((p) => p.id) : [];
         setAvailableProviders(ids);
         setProviderError(null);
-      } catch (err) {
+      } catch {
         if (cancelled) return;
         setProviderError(
           "Não foi possível confirmar quais provedores OAuth estão ativos. " +
