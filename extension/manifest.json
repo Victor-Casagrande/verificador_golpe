@@ -16,7 +16,12 @@
     {
       "matches": ["<all_urls>"],
       "js": ["content.js"],
-      "run_at": "document_idle"
+      "run_at": "document_start"
     }
-  ]
+  ],
+  "externally_connectable": {
+    "matches": [
+      "https://sentinela-api-114594031602.southamerica-east1.run.app/*"
+    ]
+  }
 }

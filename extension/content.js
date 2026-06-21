@@ -2,6 +2,39 @@ const SENTRY_CONFIG = {
   TIMEOUT_MS: 90000,
 };
 
+// ─── Canal 2: receptor do postMessage da página /auth/success ────────────────
+//
+// Falha 4 — O backend dispara window.postMessage na página /auth/success mas
+// o content.js não tinha nenhum listener para capturá-lo e repassar ao
+// background.js. Sem isso, o token nunca chegava à extensão quando o fluxo
+// era redirecionamento de aba (sem popup/opener).
+//
+// Segurança: só aceitamos mensagens cuja origem seja o mesmo host da API
+// (Cloud Run). Fontes desconhecidas são ignoradas silenciosamente.
+(function installOAuthListener() {
+  var TRUSTED_ORIGIN = "https://sentinela-api-114594031602.southamerica-east1.run.app";
+
+  window.addEventListener("message", function (event) {
+    // Rejeita mensagens de origens não confiáveis.
+    if (event.origin !== TRUSTED_ORIGIN) return;
+
+    var data = event.data;
+    if (!data || data.source !== "sentinela-oauth") return;
+    if (!data.token || typeof data.token !== "string") return;
+
+    // Retransmite para o background.js via canal interno da extensão.
+    try {
+      chrome.runtime.sendMessage({
+        source: "sentinela-oauth",
+        token: data.token,
+      });
+    } catch (e) {
+      // Extensão em contexto que não permite sendMessage — ignorar.
+    }
+  });
+})();
+// ─────────────────────────────────────────────────────────────────────────────
+
 async function getApiUrl() {
   return new Promise((resolve) => {
     chrome.storage.local.get(["API_URL"], (result) => {
