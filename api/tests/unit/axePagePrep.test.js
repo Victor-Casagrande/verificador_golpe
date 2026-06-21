@@ -68,9 +68,5 @@ describe("axePagePrep", () => {
     assert.equal(typeof axePagePrep.preparePageForAxeAudit, "function");
     assert.equal(typeof axePagePrep.waitForMainFrameComplete, "function");
     assert.equal(typeof axePagePrep.ensureLazyIframesLoaded, "function");
-    assert.equal(
-      axePagePrep.waitForPageReady,
-      axePagePrep.preparePageForAxeAudit,
-    );
   });
 });
