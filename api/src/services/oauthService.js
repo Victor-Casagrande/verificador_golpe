@@ -133,7 +133,7 @@ const exchangeCodeForToken = async (provider, code) => {
   let res;
   try {
     res = await fetch(config.tokenUrl, { method: "POST", headers, body });
-  } catch (networkError) {
+  } catch (_networkError) {
     throw new AppError(`Falha de rede ao comunicar com o servidor do provedor ${provider}.`, 502);
   }
 
@@ -147,7 +147,7 @@ const exchangeCodeForToken = async (provider, code) => {
   let data;
   try {
     data = await res.json();
-  } catch (parseError) {
+  } catch (_parseError) {
     throw new AppError(`Resposta inválida do provedor ${provider}.`, 502);
   }
 

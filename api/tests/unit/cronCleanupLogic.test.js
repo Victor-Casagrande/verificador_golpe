@@ -3,11 +3,11 @@ const assert = require("node:assert");
 const cron = require("node-cron");
 const cleanupJob = require("../../src/jobs/dbCleanup");
 
-test("cronCleanupLogic - Verifica agendamento correto do cron job", (t) => {
+test("cronCleanupLogic - Verifica agendamento correto do cron job", () => {
   const originalSchedule = cron.schedule;
   let scheduledExpression = "";
 
-  cron.schedule = (expression, callback) => {
+  cron.schedule = (expression) => {
     scheduledExpression = expression;
   };
 

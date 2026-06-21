@@ -41,7 +41,7 @@ const closeBrowser = async () => {
 const resetIdleTimeout = () => {
   if (idleTimeoutId) clearTimeout(idleTimeoutId);
   idleTimeoutId = setTimeout(async () => {
-    console.log(
+    console.info(
       "[SENTINELA-AXE] Encerrando o navegador Chromium por inatividade (liberação de RAM).",
     );
     await closeBrowser();
@@ -50,7 +50,7 @@ const resetIdleTimeout = () => {
 
 const getBrowser = async () => {
   if (pagesProcessed >= MAX_PAGES_PER_BROWSER) {
-    console.log(
+    console.info(
       `[SENTINELA-AXE] Limite de ${MAX_PAGES_PER_BROWSER} análises atingido. Reciclando a instância do Chromium...`,
     );
     await closeBrowser();
@@ -268,6 +268,4 @@ module.exports = {
   auditUrl,
   closeBrowser,
   isAxeEnabled,
-  sanitizeViolations,
-  formatDetailedViolations,
 };

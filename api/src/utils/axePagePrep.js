@@ -273,9 +273,6 @@ const preparePageForAxeAudit = async (page, timeoutMs = 10000) => {
   await ensureLazyIframesLoaded(page);
 };
 
-/** @deprecated Prefer preparePageForAxeAudit — mantido para compatibilidade interna. */
-const waitForPageReady = preparePageForAxeAudit;
-
 /** Rola a página para carregar iframes com loading="lazy" (causa conhecida de hang). */
 const scrollLazyFrames = async (page) => {
   await page.evaluate(async () => {
@@ -311,7 +308,6 @@ module.exports = {
   waitForMainFrameComplete,
   ensureLazyIframesLoaded,
   preparePageForAxeAudit,
-  waitForPageReady,
   scrollLazyFrames,
   isFrameReadinessError,
   fileExists,

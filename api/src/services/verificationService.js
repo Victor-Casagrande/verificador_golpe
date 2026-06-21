@@ -355,5 +355,4 @@ module.exports = {
   persistAnalysis,
   tryFindCachedSecurity,
   tryFindCachedAccessibility,
-  normalizeAnalysisUrl,
 };

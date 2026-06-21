@@ -22,7 +22,7 @@ const start = async () => {
   cleanupJob.scheduleCleanup();
 
   server = app.listen(PORT, () => {
-    console.log(`[READY] Servidor Sentinela rodando na porta: ${PORT}`);
+    console.info(`[READY] Servidor Sentinela rodando na porta: ${PORT}`);
   });
 };
 

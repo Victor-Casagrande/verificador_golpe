@@ -2,7 +2,6 @@ process.env.NODE_ENV = "test";
 
 const { describe, it, beforeEach } = require("node:test");
 const assert = require("node:assert/strict");
-const path = require("node:path");
 
 /**
  * Testes de resiliência do verificationService a falhas do PostgreSQL.
