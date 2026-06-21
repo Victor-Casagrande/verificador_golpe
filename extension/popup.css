@@ -30,6 +30,11 @@
 
   --shadow-accent:
     0 0 25px rgba(34,211,238,.12);
+
+  /* Bug #2 — aliases para variáveis usadas no restante do CSS */
+  --muted: var(--color-text-muted);
+  --success: var(--color-success);
+  --danger: var(--color-danger);
 }
 
 body {
@@ -85,7 +90,8 @@ body {
 
 /* LOGIN */
 
-..logo-area {
+/* Bug #1 — corrigido: era '..logo-area' (duplo ponto), seletor inválido */
+.logo-area {
 
   display: flex;
 
@@ -247,9 +253,11 @@ body {
   text-align: center;
 }
 
+/* Bug #3 — consolidado: havia duas declarações de .stat-number e .stat-label;
+   a segunda sobrescrevia a cor ciano. Mantida versão unificada e correta. */
 .stat-number {
 
-  font-size: 1.4rem;
+  font-size: 1.5rem;
 
   font-weight: 700;
 
@@ -271,19 +279,6 @@ body {
 .danger {
 
   border-color: rgba(239,68,68,.35);
-}
-
-.stat-number {
-
-  font-size: 1.5rem;
-  font-weight: bold;
-}
-
-.stat-label {
-
-  color: var(--muted);
-
-  font-size: .75rem;
 }
 
 /* TABS */

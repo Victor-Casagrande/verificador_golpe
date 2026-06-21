@@ -43,6 +43,17 @@ document.addEventListener("DOMContentLoaded", async () => {
   "message",
   async (event) => {
 
+    // Bug #7 — Valida a origem da mensagem antes de aceitar o token.
+    // Sem isso, qualquer página aberta no navegador poderia injetar
+    // um token falso e sequestrar a sessão da extensão (XSS via postMessage).
+    let expectedOrigin;
+    try {
+      expectedOrigin = new URL(API_URL).origin;
+    } catch {
+      return; // API_URL inválida — não processa a mensagem
+    }
+    if (event.origin !== expectedOrigin) return;
+
     if (
       event.data?.source ===
       "sentinela-oauth"
@@ -51,7 +62,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const token =
         event.data.token;
 
-      if (!token) return;
+      if (!token || typeof token !== "string") return;
 
       await chrome.storage.local.set({
         jwtToken: token
@@ -290,7 +301,10 @@ async function loginLocal() {
       jwtToken: data.token
     });
 
-    window.location.reload();
+    // Bug #6 — window.location.reload() tem comportamento indefinido em popup
+    // de extensão. Usa updateView() que foi criada exatamente para essa troca.
+    jwtToken = data.token;
+    updateView();
 
   } catch (error) {
 
