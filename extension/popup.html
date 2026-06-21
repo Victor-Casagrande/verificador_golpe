@@ -100,6 +100,10 @@
         <button class="tab-btn" data-target="ranking-tab">
           Ranking
         </button>
+
+        <button class="tab-btn" data-target="accessibility-tab" id="btn-tab-accessibility">
+          Acessibilidade
+        </button>
       </div>
 
       <div id="history-tab" class="tab-content">
@@ -116,6 +120,36 @@
             Carregando ranking...
           </li>
         </ul>
+      </div>
+
+      <!-- ABA ACESSIBILIDADE -->
+      <div id="accessibility-tab" class="tab-content hidden">
+
+        <!-- Score da página atual -->
+        <div class="a11y-score-card" id="a11y-score-card">
+          <div class="a11y-score-wrap">
+            <span id="a11y-score-value" class="a11y-score-number">—</span>
+            <span class="a11y-score-unit">/100</span>
+          </div>
+          <div class="a11y-score-meta">
+            <span id="a11y-score-label" class="a11y-score-label">Nota de acessibilidade</span>
+            <span id="a11y-cache-badge" class="a11y-cache-badge hidden">cache</span>
+          </div>
+        </div>
+
+        <!-- Lista de violações com Linguagem Simples -->
+        <ul
+          id="accessibility-violations-list"
+          class="violations-list"
+          role="list"
+          aria-live="polite"
+          aria-label="Lista de violações de acessibilidade"
+        >
+          <li class="violation-idle">
+            Clique nesta aba para analisar a página atual.
+          </li>
+        </ul>
+
       </div>
 
     </div>
