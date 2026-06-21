@@ -101,6 +101,26 @@ export function AuthProvider({ children }) {
     persistAuth(nextToken, resolvedUser);
   }, []);
 
+  // Falha 3 — O AuthContext só escutava window.postMessage de popup
+  // (window.opener). Quando o backend redireciona a aba diretamente para
+  // ?token=..., não há popup nem opener, então o postMessage nunca chegava.
+  //
+  // Este useEffect lê o ?token= da URL na montagem inicial e persiste o JWT,
+  // completando o login independente do canal de entrega usado pelo backend.
+  // A URL é limpa com replaceState para o token não vazar no histórico.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const urlToken = params.get("token");
+    if (!urlToken || auth.token) return; // Já autenticado — não sobrescreve.
+
+    applyAuth(urlToken, null);
+
+    // Remove o ?token= da barra de endereços sem gerar nova entrada no histórico.
+    const clean = window.location.pathname + window.location.hash;
+    window.history.replaceState({}, document.title, clean);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // [] = só na montagem. applyAuth é estável (useCallback sem deps).
+
   const logout = useCallback(() => {
     applyAuth(null, null);
     setPendingProvider(null);
