@@ -92,12 +92,35 @@ const getBrowser = async () => {
 };
 
 /**
+ * Tags de conformidade auditadas pelo axe-core.
+ *
+ * Bug #9 — anteriormente o axe rodava sem tags configuradas,
+ * usando o perfil padrão que NÃO garante cobertura de WCAG 2.2.
+ * A documentação do projeto (pré-projeto) exige cobertura explícita
+ * de WCAG 2.1 AA e WCAG 2.2 AA.
+ *
+ * Referência: https://www.deque.com/axe/core-documentation/api-documentation/#axe-core-tags
+ */
+const AXE_WCAG_TAGS = [
+  "wcag2a",     // WCAG 2.0 Nível A
+  "wcag2aa",    // WCAG 2.0 Nível AA
+  "wcag21a",    // WCAG 2.1 Nível A
+  "wcag21aa",   // WCAG 2.1 Nível AA
+  "wcag22aa",   // WCAG 2.2 Nível AA  ← principal adição
+  "best-practice",
+];
+
+/**
  * Executa o axe na página com retentativas graduais quando o frame ainda não
  * está pronto
  */
 const runAxeAnalysis = async (page) => {
   const attempt = async (legacyMode = false) => {
-    let builder = new AxePuppeteer(page);
+    let builder = new AxePuppeteer(page)
+      // Configura os padrões WCAG explicitamente para garantir cobertura
+      // de WCAG 2.1 AA e WCAG 2.2 AA conforme documentado no pré-projeto.
+      .withTags(AXE_WCAG_TAGS);
+
     if (legacyMode) builder = builder.setLegacyMode();
     return builder.analyze();
   };

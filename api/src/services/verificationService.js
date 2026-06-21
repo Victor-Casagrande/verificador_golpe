@@ -68,6 +68,10 @@ const buildAccessibilityPayload = (
     axe_source: axeMeta.source,
     axe_error: axeMeta.error || null,
     from_cache: fromCache,
+    // Inclui o array de violações (já enriquecidas com Linguagem Simples pelo
+    // axeViolations.js) para que o popup da extensão possa exibi-las ao usuário
+    // sem precisar ativar o devMode ou fazer uma segunda requisição.
+    violations: sanitizedReport,
   };
 
   if (devMode && axeMeta.detailedViolations?.length > 0) {
@@ -99,7 +103,9 @@ const buildResponse = ({
   },
   accessibility,
   persistence,
-  cached: false,
+  // Bug #8 — anteriormente estava sempre `false`, mesmo quando ambos os
+  // resultados vinham do cache. Agora reflete o estado real da análise.
+  cached: securityFromCache && Boolean(accessibility.from_cache),
 });
 
 /**
