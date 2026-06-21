@@ -22,6 +22,7 @@ WORKDIR /usr/src/app
 
 ENV NODE_ENV=production
 
+# dumb-init adicionado à instalação.
 # Chromium do sistema para puppeteer-core (binário real em /usr/lib/chromium/chromium)
 RUN apk add --no-cache \
     chromium \
@@ -29,13 +30,15 @@ RUN apk add --no-cache \
     freetype \
     harfbuzz \
     ca-certificates \
-    ttf-freefont
+    ttf-freefont \
+    dumb-init
 
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/lib/chromium/chromium
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV AXE_ENABLED=true
 
-# Copia dependências e código fonte do builder
+# Copia dependências, código fonte e definições de pacote do builder
+COPY --from=builder /usr/src/app/package.json ./package.json
 COPY --from=builder /usr/src/app/node_modules ./node_modules
 COPY --from=builder /usr/src/app/src ./src
 

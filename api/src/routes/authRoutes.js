@@ -48,6 +48,21 @@ router.get("/success", (req, res) => {
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#39;");
 
+  // URL de destino final do frontend.
+  // Falha 2 — O redirect não incluía o token, então o frontend recebia o
+  // usuário sem autenticação. Agora o ?token= é anexado para que o
+  // AuthContext possa ler via URLSearchParams como fallback.
+  const frontendBase = process.env.FRONTEND_URL || "https://verificador-golpe.vercel.app";
+  const frontendUrl = token
+    ? `${frontendBase}?token=${encodeURIComponent(token)}`
+    : frontendBase;
+
+  // Falha 1 — chrome.runtime.sendMessage sem Extension ID é uma chamada
+  // "interna" que falha silenciosamente em páginas externas. A sintaxe
+  // correta para externally_connectable é sendMessage(extensionId, payload).
+  // O EXTENSION_ID deve ser configurado no env.yaml do Cloud Run.
+  const extensionId = process.env.EXTENSION_ID || "";
+
   res.send(`<!DOCTYPE html>
 <html lang="pt-BR">
   <head>
@@ -80,43 +95,66 @@ router.get("/success", (req, res) => {
       }
     </div>
     <script>
-      // Oculta imediatamente os parâmetros da URL para evitar vazamento do token no histórico
+      // Oculta o token da URL no histórico imediatamente.
       if (window.history && window.history.replaceState) {
         window.history.replaceState({}, document.title, window.location.pathname);
       }
 
-      // Ponte invisível: entrega o resultado a quem iniciou o login e fecha.
-      // - window.opener.postMessage: popup aberto pelo frontend (SPA)
-      // - chrome.runtime.sendMessage: extensão Sentinela (quando presente)
       (function () {
+        var token      = ${JSON.stringify(token)};
+        var errorMsg   = ${JSON.stringify(errorMsg)};
+        var extId      = ${JSON.stringify(extensionId)};
+        var frontendUrl = ${JSON.stringify(frontendUrl)};
+
         var payload = {
           source: "sentinela-oauth",
-          token: ${JSON.stringify(token)},
-          error: ${JSON.stringify(errorMsg)}
+          token:  token,
+          error:  errorMsg,
         };
 
+        // Canal 1 — popup aberto pelo frontend SPA (window.opener disponível).
+        // Funciona quando o AuthContext fez window.open() e escuta postMessage.
         try {
           if (window.opener && !window.opener.closed) {
             window.opener.postMessage(payload, "*");
           }
-        } catch (e) { /* janela pai inacessível, ignorar */ }
+        } catch (e) { /* opener inacessível — ignorar */ }
 
+        // Canal 2 — postMessage na aba atual para o content.js da extensão.
+        // O content.js retransmite ao background.js via chrome.runtime.sendMessage.
         try {
-          if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.sendMessage) {
-            chrome.runtime.sendMessage(payload);
-          }
-        } catch (e) { /* extensão não instalada ou sem permissão, ignorar */ }
+          window.postMessage(payload, "*");
+        } catch (e) { /* sem postMessage — ignorar */ }
 
-        // Fecha o popup assim que o token é entregue (sem sucesso, mantém a
-        // mensagem de erro visível para o usuário).
-        if (window.opener && !${JSON.stringify(Boolean(errorMsg))}) {
-          setTimeout(function () { window.close(); }, 300);
+        // Canal 3 — externally_connectable (canal direto página → extensão).
+        // Falha 1 corrigida: sendMessage(extensionId, payload) com o ID injetado
+        // pelo backend. Sem o ID a chamada era interna e falhava silenciosamente.
+        try {
+          if (extId && typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.sendMessage) {
+            chrome.runtime.sendMessage(extId, payload);
+          }
+        } catch (e) { /* extensão ausente ou sem permissão — ignorar */ }
+
+        // Fallback incondicional de saída.
+        // Falha 2 corrigida: frontendUrl já carrega ?token= para que o
+        // AuthContext do frontend possa ler e persistir o JWT mesmo sem popup.
+        if (!errorMsg) {
+          if (window.opener && !window.opener.closed) {
+            // Cenário popup: fecha após os postMessages serem processados.
+            setTimeout(function () { window.close(); }, 300);
+          } else {
+            // Cenário aba (extensão ou fallback): redireciona com token na URL.
+            setTimeout(function () {
+              window.location.href = frontendUrl;
+            }, 1200);
+          }
         }
       })();
     </script>
   </body>
 </html>`);
 });
+
 
 router.post("/register", authLimiter, validateRegister, authController.register);
 router.post("/login", authLimiter, validateLogin, authController.login);
