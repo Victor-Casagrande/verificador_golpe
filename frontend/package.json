@@ -3,12 +3,15 @@
   "private": true,
   "version": "0.1.0",
   "description": "Frontend React + Vite do Sentinela APL (landing page + integração com a API REST).",
+  "license": "GPL-3.0-or-later",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "echo 'sem linter configurado ainda' && exit 0"
+    "lint": "eslint --config ../eslint.config.mjs src",
+    "lint:fix": "eslint --config ../eslint.config.mjs src --fix",
+    "format": "prettier --write \"src/**/*.{js,jsx,css}\""
   },
   "dependencies": {
     "react": "^18.3.1",

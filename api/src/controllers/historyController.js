@@ -1,3 +1,6 @@
+/**
+ * Histórico pessoal de análises e timeline pública de notas por URL.
+ */
 const historyRepository = require("../repositories/historyRepository");
 const AppError = require("../utils/AppError");
 const { formatAnalysisRow } = require("../utils/formatAnalysis");
@@ -26,10 +29,7 @@ const getUserHistory = async (req, res, next) => {
     const urlFilter = req.query.url || null;
 
     if (urlFilter && !validateUrl(urlFilter)) {
-      throw new AppError(
-        "O parâmetro de filtro de URL fornecido é inválido.",
-        400,
-      );
+      throw new AppError("O parâmetro de filtro de URL fornecido é inválido.", 400);
     }
 
     const normalizedFilter = urlFilter ? normalizeAnalysisUrl(urlFilter) : null;
@@ -66,10 +66,7 @@ const getUrlScoreTimeline = async (req, res, next) => {
   try {
     const url = req.query.url;
     if (!url || !validateUrl(url)) {
-      throw new AppError(
-        'O parâmetro "url" é obrigatório e deve conter um link válido.',
-        400,
-      );
+      throw new AppError('O parâmetro "url" é obrigatório e deve conter um link válido.', 400);
     }
 
     const limit = parsePagination(req.query.limit, 30, 100);

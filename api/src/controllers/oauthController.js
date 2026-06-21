@@ -1,3 +1,6 @@
+/**
+ * Fluxo OAuth (GitHub/Google) — listagem de provedores, redirect e callback.
+ */
 const oauthService = require("../services/oauthService");
 const AppError = require("../utils/AppError");
 

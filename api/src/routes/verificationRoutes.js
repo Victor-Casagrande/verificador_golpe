@@ -1,9 +1,10 @@
+/**
+ * POST /urls/analyze — verificação de segurança + auditoria axe (auth opcional).
+ */
 const express = require("express");
 const router = express.Router();
 const verificationController = require("../controllers/verificationController");
-const {
-  validateVerificationRequest,
-} = require("../middlewares/validationMiddleware");
+const { validateVerificationRequest } = require("../middlewares/validationMiddleware");
 const { optionalAuthenticate } = require("../middlewares/authMiddleware");
 const { analyzeLimiter } = require("../middlewares/rateLimitMiddleware");
 

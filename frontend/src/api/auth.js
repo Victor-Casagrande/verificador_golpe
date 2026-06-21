@@ -11,8 +11,7 @@ import { API_BASE_URL, get, post } from "./client.js";
 export const register = ({ name, email, password }) =>
   post("/auth/register", { name, email, password });
 
-export const login = ({ email, password }) =>
-  post("/auth/login", { email, password });
+export const login = ({ email, password }) => post("/auth/login", { email, password });
 
 export const listOAuthProviders = () => get("/auth/oauth/providers");
 
@@ -22,5 +21,4 @@ export const listOAuthProviders = () => get("/auth/oauth/providers");
  *
  * @param {"github"|"google"} provider
  */
-export const getOAuthAuthorizeUrl = (provider) =>
-  `${API_BASE_URL}/auth/oauth/${provider}`;
+export const getOAuthAuthorizeUrl = (provider) => `${API_BASE_URL}/auth/oauth/${provider}`;

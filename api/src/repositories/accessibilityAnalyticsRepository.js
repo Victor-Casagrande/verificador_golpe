@@ -1,3 +1,6 @@
+/**
+ * Consultas SQL agregadas para analytics de acessibilidade (dashboard autenticado).
+ */
 const db = require("../config/database");
 
 const getGlobalAccessibilityStats = async () => {
@@ -31,10 +34,7 @@ const getGlobalAccessibilityStats = async () => {
       },
     };
   } catch (error) {
-    console.error(
-      "[Analytics] Erro ao buscar estatísticas globais de acessibilidade:",
-      error,
-    );
+    console.error("[Analytics] Erro ao buscar estatísticas globais de acessibilidade:", error);
     throw error;
   }
 };
@@ -70,10 +70,7 @@ const getWorstAccessibilityHosts = async (limit = 10) => {
       avg_penalty_score: parseFloat(row.avg_penalty_score || 0),
     }));
   } catch (error) {
-    console.error(
-      "[Analytics] Erro ao buscar ranking de hosts com pior acessibilidade:",
-      error,
-    );
+    console.error("[Analytics] Erro ao buscar ranking de hosts com pior acessibilidade:", error);
     throw error;
   }
 };

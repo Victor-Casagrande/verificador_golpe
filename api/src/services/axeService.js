@@ -1,15 +1,16 @@
+/**
+ * Auditoria de acessibilidade com Puppeteer + axe-core.
+ * Gerencia pool de Chromium (reciclagem, idle timeout) e fallbacks de injeção.
+ */
 const puppeteer = require("puppeteer-core");
+const fs = require("fs");
 const { AxePuppeteer } = require("@axe-core/puppeteer");
-const {
-  sanitizeViolations,
-  formatDetailedViolations,
-} = require("../utils/axeViolations");
+const { sanitizeViolations, formatDetailedViolations } = require("../utils/axeViolations");
 const {
   resolveChromiumExecutable,
   configurePage,
   navigateForAudit,
-  waitForPageReady,
-  scrollLazyFrames,
+  preparePageForAxeAudit,
   isFrameReadinessError,
 } = require("../utils/axePagePrep");
 
@@ -23,8 +24,7 @@ let idleTimeoutId = null;
 const MAX_PAGES_PER_BROWSER = 10;
 const IDLE_TIMEOUT_MS = 10 * 60 * 1000;
 
-const isAxeEnabled = () =>
-  process.env.NODE_ENV !== "test" && process.env.AXE_ENABLED !== "false";
+const isAxeEnabled = () => process.env.NODE_ENV !== "test" && process.env.AXE_ENABLED !== "false";
 
 const closeBrowser = async () => {
   if (idleTimeoutId) {
@@ -42,7 +42,7 @@ const resetIdleTimeout = () => {
   if (idleTimeoutId) clearTimeout(idleTimeoutId);
   idleTimeoutId = setTimeout(async () => {
     console.log(
-      "[SENTRY-AXE] Encerrando o navegador Chromium por inatividade (Libertação de RAM).",
+      "[SENTINELA-AXE] Encerrando o navegador Chromium por inatividade (liberação de RAM).",
     );
     await closeBrowser();
   }, IDLE_TIMEOUT_MS);
@@ -51,7 +51,7 @@ const resetIdleTimeout = () => {
 const getBrowser = async () => {
   if (pagesProcessed >= MAX_PAGES_PER_BROWSER) {
     console.log(
-      `[SENTRY-AXE] Limite de ${MAX_PAGES_PER_BROWSER} análises atingido. A reciclar a instância do Chromium...`,
+      `[SENTINELA-AXE] Limite de ${MAX_PAGES_PER_BROWSER} análises atingido. Reciclando a instância do Chromium...`,
     );
     await closeBrowser();
   }
@@ -69,7 +69,6 @@ const getBrowser = async () => {
         "--no-first-run",
         "--no-zygote",
         "--disable-extensions",
-        "--single-process",
         "--memory-pressure-off",
         "--disable-background-networking",
         "--disable-background-timer-throttling",
@@ -102,13 +101,28 @@ const getBrowser = async () => {
  * Referência: https://www.deque.com/axe/core-documentation/api-documentation/#axe-core-tags
  */
 const AXE_WCAG_TAGS = [
-  "wcag2a",     // WCAG 2.0 Nível A
-  "wcag2aa",    // WCAG 2.0 Nível AA
-  "wcag21a",    // WCAG 2.1 Nível A
-  "wcag21aa",   // WCAG 2.1 Nível AA
-  "wcag22aa",   // WCAG 2.2 Nível AA  ← principal adição
+  "wcag2a",        // WCAG 2.0 Nível A
+  "wcag2aa",       // WCAG 2.0 Nível AA
+  "wcag21a",       // WCAG 2.1 Nível A
+  "wcag21aa",      // WCAG 2.1 Nível AA
+  "wcag22aa",      // WCAG 2.2 Nível AA  ← principal adição
   "best-practice",
 ];
+
+/**
+ * Fallback quando @axe-core/puppeteer não consegue injetar em subframes.
+ * Audita só o documento principal — suficiente para a nota de acessibilidade.
+ */
+const runAxeMainFrameOnly = async (page) => {
+  const axeSource = fs.readFileSync(require.resolve("axe-core"), "utf8");
+  await page.evaluate(axeSource);
+  return page.evaluate(async () => {
+    window.axe.configure({
+      branding: { application: "sentinela-axe-fallback" },
+    });
+    return window.axe.run(document);
+  });
+};
 
 /**
  * Executa o axe na página com retentativas graduais quando o frame ainda não
@@ -130,18 +144,21 @@ const runAxeAnalysis = async (page) => {
   } catch (firstError) {
     if (!isFrameReadinessError(firstError)) throw firstError;
 
-    console.warn(
-      "[SENTRY-AXE] Frame não pronto — aguardando rede, scroll e nova tentativa…",
-    );
-    await waitForPageReady(page, 8000);
-    await scrollLazyFrames(page).catch(() => {});
+    console.warn("[SENTINELA-AXE] Frame não pronto — aguardando rede, scroll e nova tentativa…");
+    await preparePageForAxeAudit(page, 8000);
 
     try {
       return await attempt(false);
     } catch (secondError) {
       if (!isFrameReadinessError(secondError)) throw secondError;
-      console.warn("[SENTRY-AXE] Recorrendo ao legacy mode do axe-core…");
-      return attempt(true);
+      console.warn("[SENTINELA-AXE] Recorrendo ao legacy mode do axe-core…");
+      try {
+        return await attempt(true);
+      } catch (thirdError) {
+        if (!isFrameReadinessError(thirdError)) throw thirdError;
+        console.warn("[SENTINELA-AXE] Recorrendo à auditoria apenas no frame principal…");
+        return runAxeMainFrameOnly(page);
+      }
     }
   }
 };
@@ -194,7 +211,7 @@ const auditUrl = async (urlString, options = {}) => {
   }
 
   let page = null;
-  
+
   await axeSemaphore.acquire();
 
   try {
@@ -206,7 +223,7 @@ const auditUrl = async (urlString, options = {}) => {
     page = await browser.newPage();
     await configurePage(page, AXE_TIMEOUT_MS);
     await navigateForAudit(page, urlString, AXE_TIMEOUT_MS);
-    await waitForPageReady(page);
+    await preparePageForAxeAudit(page, AXE_TIMEOUT_MS);
 
     const results = await runAxeAnalysis(page);
     const rawViolations = results.violations || [];
@@ -217,9 +234,7 @@ const auditUrl = async (urlString, options = {}) => {
       // Regras que a página passou/ficaram incompletas — usadas para amortecer
       // a nota pela cobertura (computeQualityRating).
       passes_count: Array.isArray(results.passes) ? results.passes.length : 0,
-      incomplete_count: Array.isArray(results.incomplete)
-        ? results.incomplete.length
-        : 0,
+      incomplete_count: Array.isArray(results.incomplete) ? results.incomplete.length : 0,
       source: "server",
       error: null,
     };
@@ -230,7 +245,7 @@ const auditUrl = async (urlString, options = {}) => {
 
     return payload;
   } catch (error) {
-    console.warn(`[SENTRY-AXE] Falha ao auditar ${urlString}:`, error.message);
+    console.warn(`[SENTINELA-AXE] Falha ao auditar ${urlString}:`, error.message);
     return {
       violations: [],
       passes_count: 0,

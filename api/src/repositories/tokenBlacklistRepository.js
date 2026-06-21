@@ -1,3 +1,6 @@
+/**
+ * Revogação de JWT no logout — blacklist em PostgreSQL com cache L1 em memória.
+ */
 const crypto = require("crypto");
 const db = require("../config/database");
 const logger = require("../utils/logger");
@@ -8,8 +11,7 @@ const CACHE_TTL_MS = 60 * 1000; // 60 segundos
 const MAX_CACHE_SIZE = 10000; // Limite de chaves
 
 const extractTokenSignature = (token) =>
-  token.split(".")[2] ||
-  crypto.createHash("sha256").update(token).digest("hex");
+  token.split(".")[2] || crypto.createHash("sha256").update(token).digest("hex");
 
 /** Idempotente — espelha db/init/05-blacklist-cleanup-extensions.sql */
 const ensureTable = async () => {
@@ -46,7 +48,7 @@ const isTokenRevoked = async (token) => {
       "SELECT id FROM jwt_blacklist WHERE token_signature = $1 LIMIT 1",
       [tokenSignature],
     );
-    
+
     const isRevoked = result.rowCount > 0;
 
     // Proteção contra estouro de memória do Map
@@ -57,7 +59,7 @@ const isTokenRevoked = async (token) => {
     // Armazena no Cache L1
     blacklistCache.set(tokenSignature, {
       revoked: isRevoked,
-      expiresAt: Date.now() + CACHE_TTL_MS
+      expiresAt: Date.now() + CACHE_TTL_MS,
     });
 
     return isRevoked;

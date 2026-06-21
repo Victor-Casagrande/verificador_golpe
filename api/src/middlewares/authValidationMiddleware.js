@@ -1,3 +1,6 @@
+/**
+ * Validação de entrada para cadastro e login local (e-mail/senha).
+ */
 const AppError = require("../utils/AppError");
 
 const validateRegister = (req, res, next) => {

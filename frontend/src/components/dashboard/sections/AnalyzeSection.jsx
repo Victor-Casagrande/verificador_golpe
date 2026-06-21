@@ -71,27 +71,21 @@ function ScoreHistoryChart({ points }) {
   const line = coords.map((c) => `${c.x},${c.y}`).join(" ");
   const area = `${padL},${padT + chartH} ${line} ${padL + chartW},${padT + chartH}`;
 
-  const gridLines = [0, 25, 50, 75, 100].filter(
-    (g) => g >= minShown && g <= maxShown,
-  );
+  const gridLines = [0, 25, 50, 75, 100].filter((g) => g >= minShown && g <= maxShown);
 
   return (
     <div className={styles.chartWrap}>
       <div className={styles.chartStats}>
         <div className={styles.chartStat}>
           <span className={styles.chartStatLabel}>Última nota</span>
-          <span
-            className={`${styles.chartStatValue} ${styles[`chartTone_${ratingTone(latest)}`]}`}
-          >
+          <span className={`${styles.chartStatValue} ${styles[`chartTone_${ratingTone(latest)}`]}`}>
             {latest}
           </span>
         </div>
         {delta !== 0 && (
           <div className={styles.chartStat}>
             <span className={styles.chartStatLabel}>Variação</span>
-            <span
-              className={delta > 0 ? styles.deltaUp : styles.deltaDown}
-            >
+            <span className={delta > 0 ? styles.deltaUp : styles.deltaDown}>
               {delta > 0 ? "▲" : "▼"} {Math.abs(delta)} pts
             </span>
           </div>
@@ -123,13 +117,7 @@ function ScoreHistoryChart({ points }) {
           const y = padT + (1 - (g - minShown) / range) * chartH;
           return (
             <g key={g}>
-              <line
-                x1={padL}
-                y1={y}
-                x2={padL + chartW}
-                y2={y}
-                className={styles.chartGrid}
-              />
+              <line x1={padL} y1={y} x2={padL + chartW} y2={y} className={styles.chartGrid} />
               <text x={padL - 6} y={y + 4} className={styles.chartAxisLabel}>
                 {g}
               </text>
@@ -162,12 +150,7 @@ function ScoreHistoryChart({ points }) {
                 strokeWidth={isLast ? 2 : 1.5}
               />
               {isLast && (
-                <text
-                  x={c.x}
-                  y={c.y - 10}
-                  className={styles.chartPointLabel}
-                  textAnchor="middle"
-                >
+                <text x={c.x} y={c.y - 10} className={styles.chartPointLabel} textAnchor="middle">
                   {c.v}
                 </text>
               )}
@@ -178,8 +161,7 @@ function ScoreHistoryChart({ points }) {
 
       <div className={styles.chartLegend}>
         <span>
-          <i className={styles.legendDot} style={{ background: CHART_COLORS.good }} />
-          ≥ 80
+          <i className={styles.legendDot} style={{ background: CHART_COLORS.good }} />≥ 80
         </span>
         <span>
           <i className={styles.legendDot} style={{ background: CHART_COLORS.warn }} />
@@ -201,19 +183,14 @@ function VerifyingStatus({ stepIndex }) {
         <div className={styles.verifyingIconPulse} />
         <svg className={styles.verifyingIcon} viewBox="0 0 24 24" fill="none">
           <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
-          <path
-            d="M20 20l-3.2-3.2"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-          />
+          <path d="M20 20l-3.2-3.2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
         </svg>
       </div>
       <div className={styles.verifyingText}>
         <h3 className={styles.verifyingTitle}>Verificando URL…</h3>
         <p className={styles.verifyingHint}>
-          Isso pode levar alguns segundos — estamos analisando segurança e
-          acessibilidade em paralelo.
+          Isso pode levar alguns segundos — estamos analisando segurança e acessibilidade em
+          paralelo.
         </p>
       </div>
       <div className={styles.progressTrack} aria-hidden="true">
@@ -224,11 +201,7 @@ function VerifyingStatus({ stepIndex }) {
           <li
             key={label}
             className={`${styles.verifyStep} ${
-              i < stepIndex
-                ? styles.verifyStepDone
-                : i === stepIndex
-                  ? styles.verifyStepActive
-                  : ""
+              i < stepIndex ? styles.verifyStepDone : i === stepIndex ? styles.verifyStepActive : ""
             }`}
           >
             <span className={styles.verifyStepDot} aria-hidden="true" />
@@ -320,19 +293,14 @@ export default function AnalyzeSection() {
     } catch (err) {
       setReportState({
         status: "error",
-        msg:
-          err instanceof ApiError
-            ? err.message
-            : "Não foi possível enviar a denúncia.",
+        msg: err instanceof ApiError ? err.message : "Não foi possível enviar a denúncia.",
       });
     }
   };
 
   const security = result?.security;
   const accessibility = result?.accessibility;
-  const chronological = timeline?.timeline
-    ? [...timeline.timeline].reverse()
-    : [];
+  const chronological = timeline?.timeline ? [...timeline.timeline].reverse() : [];
   const hasEvolution = chronological.length >= 2;
 
   return (
@@ -437,9 +405,7 @@ export default function AnalyzeSection() {
                 </div>
               </div>
               {accessibility?.axe_error && (
-                <p className={styles.axeError}>
-                  Aviso do axe: {accessibility.axe_error}
-                </p>
+                <p className={styles.axeError}>Aviso do axe: {accessibility.axe_error}</p>
               )}
             </div>
           </div>
@@ -455,32 +421,21 @@ export default function AnalyzeSection() {
             Array.isArray(accessibility?.detailed_report) &&
             accessibility.detailed_report.length > 0 && (
               <div className={styles.detailed}>
-                <h3 className={styles.detailedTitle}>
-                  Relatório detalhado (axe-core)
-                </h3>
+                <h3 className={styles.detailedTitle}>Relatório detalhado (axe-core)</h3>
                 <p className={styles.detailedHint}>
-                  Cores por gravidade: crítico (peso 10) → grave (5) → moderado
-                  (2) → leve (1).
+                  Cores por gravidade: crítico (peso 10) → grave (5) → moderado (2) → leve (1).
                 </p>
                 <ul className={styles.detailedList}>
                   {accessibility.detailed_report.map((v, i) => {
                     const impact = v.impact || "minor";
-                    const cardClass =
-                      IMPACT_CARD_CLASS[impact] || styles.violationMinor;
+                    const cardClass = IMPACT_CARD_CLASS[impact] || styles.violationMinor;
                     return (
-                      <li
-                        key={v.id || i}
-                        className={`${styles.violation} ${cardClass}`}
-                      >
+                      <li key={v.id || i} className={`${styles.violation} ${cardClass}`}>
                         <div className={styles.violationHead}>
-                          <Badge tone={impactTone(impact)}>
-                            {impactLabel(impact)}
-                          </Badge>
+                          <Badge tone={impactTone(impact)}>{impactLabel(impact)}</Badge>
                           <span className={styles.violationId}>{v.id}</span>
                         </div>
-                        {v.description && (
-                          <p className={styles.violationDesc}>{v.description}</p>
-                        )}
+                        {v.description && <p className={styles.violationDesc}>{v.description}</p>}
                         {Array.isArray(v.nodes) && v.nodes.length > 0 && (
                           <p className={styles.violationNodes}>
                             {v.nodes.length} elemento(s) afetado(s)
@@ -513,8 +468,8 @@ export default function AnalyzeSection() {
         >
           {!hasEvolution ? (
             <div className={common.state}>
-              Ainda não há histórico suficiente para esta URL. Refaça a análise
-              em outro momento para acompanhar a evolução.
+              Ainda não há histórico suficiente para esta URL. Refaça a análise em outro momento
+              para acompanhar a evolução.
             </div>
           ) : (
             <>
@@ -524,9 +479,7 @@ export default function AnalyzeSection() {
                   const current = toNumber(p.quality_rating);
                   const olderIdx = i + 1;
                   const older =
-                    olderIdx < arr.length
-                      ? toNumber(arr[olderIdx].quality_rating)
-                      : null;
+                    olderIdx < arr.length ? toNumber(arr[olderIdx].quality_rating) : null;
                   const delta = older == null ? null : current - older;
                   return (
                     <div className={common.row} key={p.analysis_id || i}>
@@ -534,11 +487,7 @@ export default function AnalyzeSection() {
                         <div className={common.rowTitle}>
                           Nota {current}
                           {delta != null && delta !== 0 && (
-                            <span
-                              className={
-                                delta > 0 ? styles.deltaUp : styles.deltaDown
-                              }
-                            >
+                            <span className={delta > 0 ? styles.deltaUp : styles.deltaDown}>
                               {" "}
                               {delta > 0 ? "▲" : "▼"} {Math.abs(delta)}
                             </span>
@@ -551,9 +500,7 @@ export default function AnalyzeSection() {
                         </div>
                       </div>
                       <div className={common.rowAside}>
-                        <Badge tone={ratingTone(current)}>
-                          {current}/100
-                        </Badge>
+                        <Badge tone={ratingTone(current)}>{current}/100</Badge>
                         <Badge tone={p.is_danger ? "bad" : "good"}>
                           {p.is_danger ? "risco" : "ok"}
                         </Badge>
@@ -573,9 +520,7 @@ export default function AnalyzeSection() {
           title="Reportar este site"
           subtitle="Discorda do veredicto ou quer sinalizar um problema?"
         >
-          <div className={common.state}>
-            Faça login para enviar uma denúncia sobre este site.
-          </div>
+          <div className={common.state}>Faça login para enviar uma denúncia sobre este site.</div>
         </Panel>
       )}
 
@@ -621,11 +566,7 @@ export default function AnalyzeSection() {
             )}
 
             <div>
-              <Button
-                type="submit"
-                variant="secondary"
-                loading={reportState.status === "loading"}
-              >
+              <Button type="submit" variant="secondary" loading={reportState.status === "loading"}>
                 Enviar denúncia
               </Button>
             </div>

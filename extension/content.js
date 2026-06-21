@@ -1,7 +1,3 @@
-const SENTRY_CONFIG = {
-  TIMEOUT_MS: 90000,
-};
-
 // ─── Canal 2: receptor do postMessage da página /auth/success ────────────────
 //
 // Falha 4 — O backend dispara window.postMessage na página /auth/success mas

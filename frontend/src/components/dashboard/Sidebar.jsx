@@ -13,21 +13,8 @@ import styles from "./Sidebar.module.css";
  */
 const LockIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <rect
-      x="5"
-      y="11"
-      width="14"
-      height="9"
-      rx="2"
-      stroke="currentColor"
-      strokeWidth="2"
-    />
-    <path
-      d="M8 11V8a4 4 0 0 1 8 0v3"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-    />
+    <rect x="5" y="11" width="14" height="9" rx="2" stroke="currentColor" strokeWidth="2" />
+    <path d="M8 11V8a4 4 0 0 1 8 0v3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
   </svg>
 );
 
@@ -107,7 +94,14 @@ export default function Sidebar({
       </nav>
 
       <div className={styles.bottom}>
-        <button type="button" className={styles.back} onClick={() => { onMobileClose?.(); onBackToSite(); }}>
+        <button
+          type="button"
+          className={styles.back}
+          onClick={() => {
+            onMobileClose?.();
+            onBackToSite();
+          }}
+        >
           <span className={styles.itemIcon} aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none">
               <path
@@ -123,9 +117,7 @@ export default function Sidebar({
         </button>
 
         <div className={styles.footer}>
-          <span className={styles.footerName}>
-            {user?.name || user?.email || "Conta"}
-          </span>
+          <span className={styles.footerName}>{user?.name || user?.email || "Conta"}</span>
           <span className={styles.footerHint}>Sentinela APL</span>
         </div>
       </div>

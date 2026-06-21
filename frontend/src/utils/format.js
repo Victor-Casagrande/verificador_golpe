@@ -70,8 +70,7 @@ export const impactTone = (impact) => {
   return tones[impact] || "neutral";
 };
 
-export const impactLabel = (impact) =>
-  IMPACT_LABELS[impact] || impact || "n/d";
+export const impactLabel = (impact) => IMPACT_LABELS[impact] || impact || "n/d";
 
 /** Encurta uma URL longa para exibição (mantém host + início do path). */
 export const shortenUrl = (url, max = 48) => {

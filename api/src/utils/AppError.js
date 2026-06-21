@@ -1,3 +1,6 @@
+/**
+ * Erro operacional com status HTTP — propagado até o errorHandlerMiddleware.
+ */
 class AppError extends Error {
   constructor(message, status = 500) {
     super(message);

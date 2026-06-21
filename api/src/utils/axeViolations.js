@@ -1,3 +1,7 @@
+/**
+ * Sanitização e formatação de violações axe para persistência e modo dev.
+ * Enriquece violações com Linguagem Simples (PT-BR) via axeTranslations.
+ */
 const { enrichWithTranslation } = require("./axeTranslations");
 
 const DEV_MAX_VIOLATIONS = 50;

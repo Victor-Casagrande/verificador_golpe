@@ -30,8 +30,7 @@ import { setTokenGetter, ApiError } from "../api/client.js";
  *   - Escutamos esse postMessage aqui e completamos o login.
  */
 
-const STORAGE_KEY =
-  import.meta.env.VITE_AUTH_STORAGE_KEY || "sentinela.jwt";
+const STORAGE_KEY = import.meta.env.VITE_AUTH_STORAGE_KEY || "sentinela.jwt";
 
 const AuthContext = createContext(null);
 
@@ -95,8 +94,7 @@ export function AuthProvider({ children }) {
 
   const applyAuth = useCallback((nextToken, nextUser) => {
     // Se o backend não enviou o usuário (fluxo OAuth), derivamos do token.
-    const resolvedUser =
-      nextUser ?? (nextToken ? decodeUserFromToken(nextToken) : null);
+    const resolvedUser = nextUser ?? (nextToken ? decodeUserFromToken(nextToken) : null);
     setAuth({ token: nextToken, user: resolvedUser });
     persistAuth(nextToken, resolvedUser);
   }, []);

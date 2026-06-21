@@ -60,8 +60,8 @@ export default function Features() {
           <span className="eyebrow">Por quê?</span>
           <h2 className={styles.title}>Por que escolher o Sentinela?</h2>
           <p className={styles.subtitle}>
-            Tudo o que você precisa para proteger usuários e auditar acessibilidade
-            sem reinventar a roda — em uma única API.
+            Tudo o que você precisa para proteger usuários e auditar acessibilidade sem reinventar a
+            roda — em uma única API.
           </p>
         </header>
 

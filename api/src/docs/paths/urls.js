@@ -3,18 +3,19 @@
  * /urls/analyze:
  *   post:
  *     tags: [Verificação]
- *     summary: Analisa URL (Google Safe Browsing + axe-core no servidor)
+ *     summary: Analisa segurança e acessibilidade de uma URL
  *     description: |
- *       Fluxo: (1) verificação de segurança Google/heurísticas; (2) auditoria axe-core via Puppeteer;
- *       (3) gera accessibility_score (penalidade) e quality_rating (0–100, maior = melhor).
- *       A nota usa pesos por impacto (critical 10 / serious 5 / moderate 2 / minor 1),
- *       retornos decrescentes por nós (1 + log2(nós), com teto), curva exponencial
- *       (100·e^(-penalidade/150)) e amortecimento por cobertura via `passes_count` —
- *       evitando zerar sites grandes e, no geral, razoáveis.
- *       Com `dev_mode: true`, a resposta inclui `accessibility.detailed_report` com exceções
- *       completas do axe-core (tags, nós afetados, HTML e failureSummary) para depuração.
- *       Cada chamada grava nova análise — o mesmo site em datas diferentes pode ter notas diferentes.
- *       Header Authorization opcional vincula ao histórico do usuário.
+ *       Executa a análise completa de uma URL:
+ *
+ *       **Segurança** — cache de 24 h → Google Safe Browsing → heurísticas locais (7 regras).
+ *
+ *       **Acessibilidade** — auditoria axe-core no servidor (Chromium headless).
+ *       Retorna `quality_rating` (0–100, maior = melhor) e `accessibility_score` (penalidade).
+ *
+ *       - Autenticação **opcional** — com JWT, a análise é vinculada ao histórico do usuário.
+ *       - Se o banco estiver indisponível, a análise continua; `persistence.persisted` será `false`.
+ *       - `accessibility_report` no body serve como fallback quando a auditoria no servidor falha.
+ *       - Cada chamada gera um novo registro — o mesmo site pode ter notas diferentes ao longo do tempo.
  *     security:
  *       - bearerAuth: []
  *       - {}
@@ -26,33 +27,48 @@
  *             $ref: '#/components/schemas/UrlAnalyzeRequest'
  *     responses:
  *       200:
- *         description: Resultado da análise
+ *         description: Análise concluída
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UrlAnalyzeResponse'
  *       400:
- *         description: URL inválida
+ *         description: URL inválida ou ausente
  *
  * /users/history:
  *   get:
  *     tags: [Histórico]
- *     summary: Histórico de análises do usuário autenticado
+ *     summary: Histórico de análises do usuário
+ *     description: Lista paginada das URLs analisadas pelo usuário autenticado, com veredito de segurança e nota de acessibilidade.
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: query
  *         name: limit
  *         schema: { type: integer, default: 20, maximum: 100 }
+ *         description: Quantidade de registros por página
  *       - in: query
  *         name: offset
  *         schema: { type: integer, default: 0 }
+ *         description: Deslocamento para paginação
+ *       - in: query
+ *         name: url
+ *         schema: { type: string, format: uri }
+ *         description: Filtrar por URL específica
  *     responses:
  *       200:
- *         description: Lista paginada
+ *         description: Lista paginada de análises
  *       401:
- *         description: Não autenticado
+ *         description: Token ausente ou inválido
  *
  * /reports:
  *   post:
  *     tags: [Denúncias]
- *     summary: Enviar feedback/denúncia sobre uma URL
+ *     summary: Registrar denúncia ou feedback sobre uma URL
+ *     description: |
+ *       Permite que usuários autenticados reportem URLs analisadas.
+ *       Tipos: `false_positive` (falso positivo), `confirmed_scam` (golpe confirmado),
+ *       `accessibility_issue` (problema de acessibilidade), `other`.
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -65,12 +81,14 @@
  *       201:
  *         description: Denúncia registrada
  *       401:
- *         description: Não autenticado
+ *         description: Token ausente ou inválido
+ *       429:
+ *         description: Limite de denúncias por IP excedido
  *
  * /reports/mine:
  *   get:
  *     tags: [Denúncias]
- *     summary: Lista paginada das denúncias do usuário autenticado
+ *     summary: Denúncias enviadas pelo usuário
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -82,30 +100,35 @@
  *         schema: { type: integer, default: 0 }
  *     responses:
  *       200:
- *         description: Lista paginada das denúncias do usuário
+ *         description: Lista paginada de denúncias do usuário
  *       401:
- *         description: Não autenticado
+ *         description: Token ausente ou inválido
  *
  * /urls/scores/history:
  *   get:
  *     tags: [Histórico]
- *     summary: Evolução das notas de uma URL ao longo do tempo
+ *     summary: Evolução das notas de uma URL
+ *     description: Timeline pública das análises de acessibilidade de uma URL específica, ordenada da mais recente para a mais antiga.
  *     parameters:
  *       - in: query
  *         name: url
  *         required: true
  *         schema: { type: string, format: uri }
+ *         description: URL cuja timeline será consultada
  *       - in: query
  *         name: limit
- *         schema: { type: integer, default: 30 }
+ *         schema: { type: integer, default: 30, maximum: 100 }
  *     responses:
  *       200:
- *         description: Timeline de quality_rating por data
+ *         description: Timeline de notas com data, `quality_rating` e `accessibility_score`
+ *       400:
+ *         description: Parâmetro `url` ausente ou inválido
  *
  * /rankings/accessibility/worst:
  *   get:
  *     tags: [Rankings]
- *     summary: Sites com piores notas (menor quality_rating médio)
+ *     summary: Sites com piores notas de acessibilidade
+ *     description: Ranking público de hosts com menor `quality_rating` médio. Requer ao menos `min_analyses` auditorias por host.
  *     parameters:
  *       - in: query
  *         name: limit
@@ -113,33 +136,36 @@
  *       - in: query
  *         name: min_analyses
  *         schema: { type: integer, default: 1 }
+ *         description: Mínimo de análises por host para entrar no ranking
  *     responses:
  *       200:
- *         description: Ranking dos piores por host
+ *         description: Ranking dos piores hosts por nota média
  *
  * /rankings/accessibility/best:
  *   get:
  *     tags: [Rankings]
- *     summary: Sites com melhores notas (maior quality_rating médio)
+ *     summary: Sites com melhores notas de acessibilidade
+ *     description: Ranking público de hosts com maior `quality_rating` médio.
  *     parameters:
  *       - in: query
  *         name: limit
  *         schema: { type: integer, default: 10, maximum: 50 }
  *     responses:
  *       200:
- *         description: Ranking dos melhores por host
+ *         description: Ranking dos melhores hosts por nota média
  *
  * /rankings/reports/most:
  *   get:
  *     tags: [Rankings]
- *     summary: Sites com mais denúncias dos usuários
+ *     summary: Sites mais denunciados
+ *     description: Ranking público de URLs/hosts com maior volume de denúncias da comunidade.
  *     parameters:
  *       - in: query
  *         name: limit
  *         schema: { type: integer, default: 10, maximum: 50 }
  *     responses:
  *       200:
- *         description: Ranking por quantidade de reports
+ *         description: Ranking por quantidade de denúncias
  */
 
 module.exports = {};

@@ -9,18 +9,12 @@ router.use(authMiddleware.authenticate);
  * @route GET /api/analytics/accessibility/global
  * @desc Retorna volumetria geral e médias de notas de acessibilidade
  */
-router.get(
-  "/global",
-  accessibilityAnalyticsController.getGlobalAccessibilityOverview,
-);
+router.get("/global", accessibilityAnalyticsController.getGlobalAccessibilityOverview);
 
 /**
  * @route GET /api/analytics/accessibility/ranking/hosts
  * @desc Retorna o ranking de domínios com piores notas de acessibilidade com limite configurável (?limit=X)
  */
-router.get(
-  "/ranking/hosts",
-  accessibilityAnalyticsController.getWorstAccessibilityHosts,
-);
+router.get("/ranking/hosts", accessibilityAnalyticsController.getWorstAccessibilityHosts);
 
 module.exports = router;

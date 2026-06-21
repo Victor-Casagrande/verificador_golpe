@@ -1,14 +1,8 @@
 const historyRepository = require("../repositories/historyRepository");
 const axeService = require("./axeService");
-const {
-  computeAccessibilityScore,
-  computeQualityRating,
-} = require("../utils/accessibilityScore");
+const { computeAccessibilityScore, computeQualityRating } = require("../utils/accessibilityScore");
 const { checkStaticHeuristics } = require("../utils/urlHeuristics");
-const {
-  extractSiteHost,
-  normalizeAnalysisUrl,
-} = require("../utils/urlNormalize");
+const { extractSiteHost, normalizeAnalysisUrl } = require("../utils/urlNormalize");
 const { formatDetailedViolations } = require("../utils/axeViolations");
 const logger = require("../utils/logger");
 
@@ -39,11 +33,7 @@ const parseCachedViolations = (raw) => {
   return [];
 };
 
-const buildAccessibilityPayload = (
-  sanitizedReport,
-  axeMeta,
-  devMode = false,
-) => {
+const buildAccessibilityPayload = (sanitizedReport, axeMeta, devMode = false) => {
   const fromCache = Boolean(axeMeta.fromCache);
   const penaltyScore =
     fromCache && axeMeta.cachedScores
@@ -162,10 +152,7 @@ const runSecurityCheck = async (urlString) => {
 
     const googleApiUrl = `https://safebrowsing.googleapis.com/v4/threatMatches:find?key=${apiKey}`;
     const controller = new AbortController();
-    const timeoutId = setTimeout(
-      () => controller.abort(),
-      GOOGLE_SAFE_BROWSING_TIMEOUT_MS,
-    );
+    const timeoutId = setTimeout(() => controller.abort(), GOOGLE_SAFE_BROWSING_TIMEOUT_MS);
 
     let response;
     try {
@@ -271,11 +258,7 @@ const buildAccessibilityFromCache = (cached) => {
  *
  * @param {boolean} devMode - Quando true, preserva detailedViolations do axe para a resposta
  */
-const resolveAccessibilityReport = async (
-  urlString,
-  clientReport,
-  devMode = false,
-) => {
+const resolveAccessibilityReport = async (urlString, clientReport, devMode = false) => {
   if (!devMode) {
     const cached = await tryFindCachedAccessibility(urlString);
     if (cached) {
@@ -330,26 +313,16 @@ const resolveAccessibilityReport = async (
  *
  * @param {boolean} [devMode=false] - Relatório de acessibilidade detalhado na resposta (não altera o que é salvo no banco)
  */
-const verifyUrl = async (
-  urlString,
-  accessibilityReport,
-  userId = null,
-  devMode = false,
-) => {
+const verifyUrl = async (urlString, accessibilityReport, userId = null, devMode = false) => {
   const normalizedUrl = normalizeAnalysisUrl(urlString);
   const siteHost = extractSiteHost(normalizedUrl);
 
-  const [{ result: securityResult, fromCache: securityFromCache }, axeMeta] =
-    await Promise.all([
-      runSecurityCheck(normalizedUrl),
-      resolveAccessibilityReport(normalizedUrl, accessibilityReport, devMode),
-    ]);
+  const [{ result: securityResult, fromCache: securityFromCache }, axeMeta] = await Promise.all([
+    runSecurityCheck(normalizedUrl),
+    resolveAccessibilityReport(normalizedUrl, accessibilityReport, devMode),
+  ]);
 
-  const accessibility = buildAccessibilityPayload(
-    axeMeta.violations,
-    axeMeta,
-    devMode,
-  );
+  const accessibility = buildAccessibilityPayload(axeMeta.violations, axeMeta, devMode);
 
   const { analysisId, persistence } = await persistAnalysis({
     userId,

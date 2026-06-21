@@ -3,10 +3,11 @@
  * /:
  *   get:
  *     tags: [Sistema]
- *     summary: Index da API (HATEOAS — lista de endpoints)
+ *     summary: Índice da API
+ *     description: Página de boas-vindas com links HATEOAS para os principais endpoints.
  *     responses:
  *       200:
- *         description: Bem-vindo e mapa de rotas principais
+ *         description: Mapa de rotas disponíveis
  *         content:
  *           application/json:
  *             schema:
@@ -26,7 +27,10 @@
  * /api/analytics/security/global:
  *   get:
  *     tags: [Analytics]
- *     summary: Volumetria geral de fraudes (ameaças, seguros, cache hits)
+ *     summary: Panorama geral de segurança
+ *     description: |
+ *       Volumetria agregada de todas as análises: total de ameaças, URLs seguras,
+ *       detecções por Google vs. heurísticas e hits de cache.
  *     security:
  *       - bearerAuth: []
  *     responses:
@@ -41,25 +45,28 @@
  *                 data:
  *                   type: object
  *                   properties:
- *                     total_analyses: { type: integer }
- *                     total_threats: { type: integer }
+ *                     total_analyses: { type: integer, description: "Total de URLs analisadas" }
+ *                     total_threats: { type: integer, description: "URLs classificadas como perigosas" }
  *                     total_safe: { type: integer }
  *                     threats_caught_by_google: { type: integer }
  *                     threats_caught_by_heuristics: { type: integer }
- *                     total_cache_hits: { type: integer }
+ *                     total_cache_hits: { type: integer, description: "Análises atendidas pelo cache de 24 h" }
  *                 timestamp: { type: string, format: date-time }
  *       401:
- *         description: Não autenticado
+ *         description: Token ausente ou inválido
  *
  * /api/analytics/security/community:
  *   get:
  *     tags: [Analytics]
- *     summary: Feedbacks da comunidade cruzados com origem da análise
+ *     summary: Denúncias da comunidade
+ *     description: |
+ *       Agrega denúncias enviadas pelos usuários, cruzando com a origem da análise
+ *       (Google Safe Browsing ou heurísticas) para cada tipo de report.
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Lista agrupada por report_type
+ *         description: Denúncias agrupadas por tipo
  *         content:
  *           application/json:
  *             schema:
@@ -76,21 +83,22 @@
  *                       related_to_heuristics: { type: integer }
  *                       related_to_google: { type: integer }
  *       401:
- *         description: Não autenticado
+ *         description: Token ausente ou inválido
  *
  * /api/analytics/security/ranking/hosts:
  *   get:
  *     tags: [Analytics]
- *     summary: Ranking de domínios mais perigosos
+ *     summary: Hosts mais perigosos
+ *     description: Ranking de domínios com maior volume de ameaças detectadas.
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: query
  *         name: limit
- *         schema: { type: integer, default: 10, minimum: 1 }
+ *         schema: { type: integer, default: 10, minimum: 1, maximum: 50 }
  *     responses:
  *       200:
- *         description: Top N hosts com mais ameaças detectadas
+ *         description: Top N hosts por ameaças detectadas
  *         content:
  *           application/json:
  *             schema:
@@ -106,15 +114,16 @@
  *                       site_host: { type: string }
  *                       threat_count: { type: integer }
  *                       last_threat_seen: { type: string, format: date-time }
- *       400:
- *         description: Parâmetro limit inválido
  *       401:
- *         description: Não autenticado
+ *         description: Token ausente ou inválido
  *
  * /api/analytics/accessibility/global:
  *   get:
  *     tags: [Analytics]
- *     summary: Médias globais de quality_rating e accessibility_score
+ *     summary: Panorama geral de acessibilidade
+ *     description: |
+ *       Médias globais de `quality_rating` e `accessibility_score`,
+ *       total de auditorias e distribuição por origem (`server`, `client`, `skipped`).
  *     security:
  *       - bearerAuth: []
  *     responses:
@@ -130,30 +139,32 @@
  *                   type: object
  *                   properties:
  *                     total_audits: { type: integer }
- *                     avg_quality_rating: { type: number, format: float }
- *                     avg_accessibility_score: { type: number, format: float }
+ *                     avg_quality_rating: { type: number, format: float, description: "Média da nota (maior = melhor)" }
+ *                     avg_accessibility_score: { type: number, format: float, description: "Média da penalidade (maior = pior)" }
  *                     execution_sources:
  *                       type: object
+ *                       description: "Quantidade de auditorias por origem"
  *                       properties:
  *                         server: { type: integer }
  *                         client: { type: integer }
  *                         skipped: { type: integer }
  *       401:
- *         description: Não autenticado
+ *         description: Token ausente ou inválido
  *
  * /api/analytics/accessibility/ranking/hosts:
  *   get:
  *     tags: [Analytics]
- *     summary: Ranking de domínios com pior acessibilidade média
+ *     summary: Hosts com pior acessibilidade
+ *     description: Ranking de domínios com menor `quality_rating` médio entre todas as auditorias.
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: query
  *         name: limit
- *         schema: { type: integer, default: 10, minimum: 1 }
+ *         schema: { type: integer, default: 10, minimum: 1, maximum: 50 }
  *     responses:
  *       200:
- *         description: Top N hosts com pior quality_rating médio
+ *         description: Top N hosts com pior nota média
  *         content:
  *           application/json:
  *             schema:
@@ -170,10 +181,8 @@
  *                       pages_audited: { type: integer }
  *                       avg_quality_rating: { type: number, format: float }
  *                       avg_penalty_score: { type: number, format: float }
- *       400:
- *         description: Parâmetro limit inválido
  *       401:
- *         description: Não autenticado
+ *         description: Token ausente ou inválido
  */
 
 module.exports = {};

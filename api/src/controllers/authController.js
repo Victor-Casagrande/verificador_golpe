@@ -1,3 +1,6 @@
+/**
+ * Controladores de autenticação local (registro e login com e-mail/senha).
+ */
 const authService = require("../services/authService");
 
 const register = async (req, res, next) => {

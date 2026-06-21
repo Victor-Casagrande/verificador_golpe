@@ -10,14 +10,7 @@ import styles from "./Toggle.module.css";
  * `onChange` recebe o novo booleano diretamente (não o evento), para casar
  * com o estilo dos demais controles do projeto.
  */
-export default function Toggle({
-  checked = false,
-  onChange,
-  label,
-  hint,
-  disabled = false,
-  id,
-}) {
+export default function Toggle({ checked = false, onChange, label, hint, disabled = false, id }) {
   const generatedId = useId();
   const inputId = id || generatedId;
 

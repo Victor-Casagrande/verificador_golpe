@@ -1,3 +1,6 @@
+/**
+ * Job cron de limpeza do PostgreSQL — histórico antigo, tokens expirados e contas inativas.
+ */
 const cron = require("node-cron");
 const pool = require("../config/database");
 const logger = require("../utils/logger");
@@ -14,14 +17,18 @@ const scheduleCleanup = () => {
     try {
       await client.query("BEGIN");
 
-      // Adquire um lock a nível de transação. 
+      // Adquire um lock a nível de transação.
       // Em caso de múltiplos containers disparando no mesmo minuto, apenas 1 adquire o lock.
       // O lock é automaticamente liberado no COMMIT ou ROLLBACK.
       const lockId = 123456789; // ID único para este job
-      const lockResult = await client.query("SELECT pg_try_advisory_xact_lock($1) AS locked", [lockId]);
-      
+      const lockResult = await client.query("SELECT pg_try_advisory_xact_lock($1) AS locked", [
+        lockId,
+      ]);
+
       if (!lockResult.rows[0].locked) {
-        logger.info("[CRON] Rotina de limpeza já está rodando em outro container. Ignorando execução local.");
+        logger.info(
+          "[CRON] Rotina de limpeza já está rodando em outro container. Ignorando execução local.",
+        );
         await client.query("ROLLBACK");
         return;
       }
@@ -39,7 +46,9 @@ const scheduleCleanup = () => {
       const tokenResult = await client.query(`
         DELETE FROM jwt_blacklist WHERE expires_at < NOW();
       `);
-      logger.info(`[CRON] Limpeza de jwt_blacklist: ${tokenResult.rowCount} tokens expirados removidos.`);
+      logger.info(
+        `[CRON] Limpeza de jwt_blacklist: ${tokenResult.rowCount} tokens expirados removidos.`,
+      );
 
       const inactiveUsersResult = await client.query(`
         DELETE FROM users 
@@ -47,15 +56,15 @@ const scheduleCleanup = () => {
         AND id NOT IN (SELECT DISTINCT user_id FROM url_analyses WHERE user_id IS NOT NULL) 
         AND id NOT IN (SELECT DISTINCT user_id FROM reports);
       `);
-      logger.info(`[CRON] Limpeza de users (inativos): ${inactiveUsersResult.rowCount} contas inativas removidas.`);
+      logger.info(
+        `[CRON] Limpeza de users (inativos): ${inactiveUsersResult.rowCount} contas inativas removidas.`,
+      );
 
       await client.query("COMMIT");
       logger.info("[CRON] Rotina de limpeza finalizada com sucesso.");
     } catch (error) {
       await client.query("ROLLBACK");
-      logger.error(
-        `[CRON] Erro crítico ao executar limpeza do banco: ${error.message}`,
-      );
+      logger.error(`[CRON] Erro crítico ao executar limpeza do banco: ${error.message}`);
     } finally {
       client.release();
     }

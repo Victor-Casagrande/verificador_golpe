@@ -18,10 +18,7 @@ import styles from "./LoginModal.module.css";
 export default function LoginModal({ open, onClose }) {
   const { startOAuth, pendingProvider, isAuthenticated } = useAuth();
   const [tab, setTab] = useState("login");
-  const [availableProviders, setAvailableProviders] = useState([
-    "github",
-    "google",
-  ]);
+  const [availableProviders, setAvailableProviders] = useState(["github", "google"]);
   const [providerError, setProviderError] = useState(null);
 
   // Quando o usuário concluir o login, fecha automaticamente.
@@ -39,9 +36,7 @@ export default function LoginModal({ open, onClose }) {
       try {
         const res = await listOAuthProviders();
         if (cancelled) return;
-        const ids = Array.isArray(res?.providers)
-          ? res.providers.map((p) => p.id)
-          : [];
+        const ids = Array.isArray(res?.providers) ? res.providers.map((p) => p.id) : [];
         setAvailableProviders(ids);
         setProviderError(null);
       } catch (err) {
@@ -89,11 +84,7 @@ export default function LoginModal({ open, onClose }) {
           >
             Cadastrar
           </button>
-          <span
-            className={styles.tabIndicator}
-            data-mode={tab}
-            aria-hidden="true"
-          />
+          <span className={styles.tabIndicator} data-mode={tab} aria-hidden="true" />
         </div>
 
         <LocalLoginForm mode={tab} onSuccess={handleClose} />
@@ -108,8 +99,7 @@ export default function LoginModal({ open, onClose }) {
             loading={pendingProvider === "google"}
             disabled={
               Boolean(pendingProvider) ||
-              (availableProviders.length > 0 &&
-                !availableProviders.includes("google"))
+              (availableProviders.length > 0 && !availableProviders.includes("google"))
             }
             onClick={() => startOAuth("google")}
           />
@@ -118,37 +108,26 @@ export default function LoginModal({ open, onClose }) {
             loading={pendingProvider === "github"}
             disabled={
               Boolean(pendingProvider) ||
-              (availableProviders.length > 0 &&
-                !availableProviders.includes("github"))
+              (availableProviders.length > 0 && !availableProviders.includes("github"))
             }
             onClick={() => startOAuth("github")}
           />
         </div>
 
-        {providerError && (
-          <p className={styles.providerWarn}>{providerError}</p>
-        )}
+        {providerError && <p className={styles.providerWarn}>{providerError}</p>}
 
         <p className={styles.footnote}>
           {tab === "login" ? (
             <>
               Ainda não tem conta?{" "}
-              <button
-                type="button"
-                className={styles.linkBtn}
-                onClick={() => setTab("register")}
-              >
+              <button type="button" className={styles.linkBtn} onClick={() => setTab("register")}>
                 Cadastre-se aqui
               </button>
             </>
           ) : (
             <>
               Já tem conta?{" "}
-              <button
-                type="button"
-                className={styles.linkBtn}
-                onClick={() => setTab("login")}
-              >
+              <button type="button" className={styles.linkBtn} onClick={() => setTab("login")}>
                 Entrar
               </button>
             </>

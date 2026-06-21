@@ -12,8 +12,8 @@ export default function ShowcaseRealtime() {
           <span className="eyebrow">Em tempo real</span>
           <h2 className={styles.title}>Análises inteligentes em tempo real</h2>
           <p className={styles.subtitle}>
-            Cada URL passa por cache de 24h, Safe Browsing, heurísticas
-            locais e auditoria axe-core — em uma única chamada à API.
+            Cada URL passa por cache de 24h, Safe Browsing, heurísticas locais e auditoria axe-core
+            — em uma única chamada à API.
           </p>
         </header>
 
@@ -34,7 +34,9 @@ export default function ShowcaseRealtime() {
               <div className={styles.metrics}>
                 <div className={styles.metric}>
                   <span className={styles.metricLabel}>quality_rating</span>
-                  <span className={styles.metricValue}>89<small>/100</small></span>
+                  <span className={styles.metricValue}>
+                    89<small>/100</small>
+                  </span>
                 </div>
                 <div className={styles.metric}>
                   <span className={styles.metricLabel}>violations</span>

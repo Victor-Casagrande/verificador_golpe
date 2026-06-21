@@ -1,3 +1,6 @@
+/**
+ * Acesso à tabela `users` — contas locais e resolução de usuário por JWT (`sub`).
+ */
 const db = require("../config/database");
 
 const findByEmail = async (email) => {
@@ -9,10 +12,9 @@ const findByEmail = async (email) => {
 };
 
 const findById = async (id) => {
-  const result = await db.query(
-    "SELECT id, name, email, created_at FROM users WHERE id = $1",
-    [id],
-  );
+  const result = await db.query("SELECT id, name, email, created_at FROM users WHERE id = $1", [
+    id,
+  ]);
   return result.rows[0] || null;
 };
 

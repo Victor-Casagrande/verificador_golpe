@@ -12,7 +12,7 @@ ALTER TABLE url_analyses
     ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
 
 ALTER TABLE url_analyses
-    ADD COLUMN IF NOT EXISTS accessibility_score INTEGER NOT NULL DEFAULT 0;
+    ADD COLUMN IF NOT EXISTS accessibility_score NUMERIC(7, 2) NOT NULL DEFAULT 0;
 
 CREATE INDEX IF NOT EXISTS idx_url_analyses_user_id ON url_analyses (user_id);
 CREATE INDEX IF NOT EXISTS idx_url_analyses_accessibility_score ON url_analyses (accessibility_score DESC);

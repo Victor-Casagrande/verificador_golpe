@@ -37,20 +37,14 @@ export default function Button({
     .join(" ");
 
   return (
-    <button
-      className={classNames}
-      disabled={loading || rest.disabled}
-      {...rest}
-    >
+    <button className={classNames} disabled={loading || rest.disabled} {...rest}>
       {loading ? (
         <span className={styles.spinner} aria-hidden="true" />
       ) : (
         leadingIcon && <span className={styles.icon}>{leadingIcon}</span>
       )}
       <span className={styles.label}>{children}</span>
-      {trailingIcon && !loading && (
-        <span className={styles.icon}>{trailingIcon}</span>
-      )}
+      {trailingIcon && !loading && <span className={styles.icon}>{trailingIcon}</span>}
     </button>
   );
 }

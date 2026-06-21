@@ -1,3 +1,10 @@
+/**
+ * Middlewares de autenticação JWT.
+ *
+ * - `authenticate`: exige Bearer válido e usuário existente; popula `req.user`.
+ * - `optionalAuthenticate`: injeta `req.user` quando há token válido, mas não
+ *   bloqueia requisições anônimas (ex.: POST /urls/analyze).
+ */
 const userRepository = require("../repositories/userRepository");
 const tokenBlacklistRepository = require("../repositories/tokenBlacklistRepository");
 const AppError = require("../utils/AppError");
@@ -37,10 +44,7 @@ const authenticate = async (req, res, next) => {
 
     return next();
   } catch (error) {
-    if (
-      error.name === "JsonWebTokenError" ||
-      error.name === "TokenExpiredError"
-    ) {
+    if (error.name === "JsonWebTokenError" || error.name === "TokenExpiredError") {
       return next(new AppError("Token inválido ou expirado.", 401));
     }
 

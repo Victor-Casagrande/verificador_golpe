@@ -1,3 +1,6 @@
+/**
+ * Validação do corpo de POST /urls/analyze (URL, relatório axe opcional, dev_mode).
+ */
 const { validateUrl } = require("../utils/validators");
 
 const validateVerificationRequest = (req, res, next) => {
@@ -26,8 +29,7 @@ const validateVerificationRequest = (req, res, next) => {
     }
 
     const isValidStructure = accessibility_report.every(
-      (item) =>
-        typeof item === "object" && item !== null && !Array.isArray(item),
+      (item) => typeof item === "object" && item !== null && !Array.isArray(item),
     );
 
     if (!isValidStructure) {
@@ -39,16 +41,10 @@ const validateVerificationRequest = (req, res, next) => {
     }
   }
 
-  if (
-    dev_mode !== undefined &&
-    dev_mode !== true &&
-    dev_mode !== false &&
-    dev_mode !== "true"
-  ) {
+  if (dev_mode !== undefined && dev_mode !== true && dev_mode !== false && dev_mode !== "true") {
     return res.status(400).json({
       error: "Bad Request",
-      message:
-        'O campo dev_mode deve ser booleano (true/false) ou a string "true".',
+      message: 'O campo dev_mode deve ser booleano (true/false) ou a string "true".',
     });
   }
 

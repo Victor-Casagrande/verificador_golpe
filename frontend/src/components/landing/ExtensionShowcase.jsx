@@ -22,19 +22,24 @@ export default function ExtensionShowcase() {
       <div className={`container ${styles.inner}`}>
         <div className={styles.copy}>
           <span className="eyebrow">Extensão Chrome</span>
-          <h2 className={styles.title}>
-            A extensão que transforma navegação em diagnóstico.
-          </h2>
+          <h2 className={styles.title}>A extensão que transforma navegação em diagnóstico.</h2>
           <p className={styles.subtitle}>
-            Instale uma vez e o Sentinela analisa cada página que você abrir.
-            Tudo via Manifest V3, content script leve e service worker próprio.
+            Instale uma vez e o Sentinela analisa cada página que você abrir. Tudo via Manifest V3,
+            content script leve e service worker próprio.
           </p>
 
           <ul className={styles.bullets}>
             {BULLETS.map((b) => (
               <li key={b.title} className={styles.bullet}>
                 <span className={styles.bulletIcon} aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.4"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
                     <path d="M5 12l5 5 9-11" />
                   </svg>
                 </span>
@@ -50,7 +55,13 @@ export default function ExtensionShowcase() {
             <Button
               variant="primary"
               as="a"
-              onClick={() => window.open("https://github.com/Victor-Casagrande/verificador_golpe", "_blank", "noopener")}
+              onClick={() =>
+                window.open(
+                  "https://github.com/Victor-Casagrande/verificador_golpe",
+                  "_blank",
+                  "noopener",
+                )
+              }
             >
               Ver no GitHub
             </Button>

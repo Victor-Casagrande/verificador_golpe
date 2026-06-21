@@ -37,8 +37,7 @@ export default function Landing({ onEnterDashboard, onGuestAccess }) {
 
   // Quando já autenticado, os CTAs principais levam direto ao painel em vez
   // de reabrir o modal de login.
-  const primaryAction =
-    isAuthenticated && onEnterDashboard ? onEnterDashboard : openLogin;
+  const primaryAction = isAuthenticated && onEnterDashboard ? onEnterDashboard : openLogin;
 
   return (
     <>
