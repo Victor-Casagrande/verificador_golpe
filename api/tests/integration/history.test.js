@@ -31,7 +31,7 @@ describe('Integration Tests - History Routes', () => {
     }];
     
     mock.method(historyRepository, 'findByUserId', async () => mockHistory);
-    mock.method(historyRepository, 'countByUserId', async () => 1);
+    mock.method(historyRepository, 'countStatsByUserId', async () => ({ total: 1, safe: 1, danger: 0 }));
 
     const res = await request(app)
       .get('/users/history')
