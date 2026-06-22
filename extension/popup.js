@@ -20,7 +20,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.querySelectorAll(".header-brand").forEach(brand => {
     brand.style.cursor = "pointer";
     brand.addEventListener("click", () => {
-      chrome.tabs.create({ url: "https://verificador-golpe.vercel.app/dashboard" });
+      chrome.tabs.create({ url: "https://verificador-golpe.vercel.app/" });
     });
   });
 
