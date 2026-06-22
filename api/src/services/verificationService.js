@@ -2,6 +2,7 @@ const historyRepository = require("../repositories/historyRepository");
 const axeService = require("./axeService");
 const { computeAccessibilityScore, computeQualityRating } = require("../utils/accessibilityScore");
 const { checkStaticHeuristics } = require("../utils/urlHeuristics");
+const { checkDomainAge } = require("../utils/domainAge");
 const { extractSiteHost, normalizeAnalysisUrl } = require("../utils/urlNormalize");
 const { formatDetailedViolations } = require("../utils/axeViolations");
 const logger = require("../utils/logger");
@@ -195,6 +196,30 @@ const runSecurityCheck = async (urlString) => {
       `[SAFE-BROWSING] Falha na verificação externa. Fallback heurístico local: ${externalApiError.message}`,
     );
     securityResult = checkStaticHeuristics(urlString);
+  }
+
+  // ── Heurística de domínio novo (WHOIS) ──────────────────────────────────────
+  // Executada SOMENTE quando o Safe Browsing e as heurísticas estáticas ainda
+  // não classificaram como danger, para economizar tempo em domínios já sinalizados.
+  if (!securityResult.is_danger) {
+    try {
+      const ageInfo = await checkDomainAge(urlString);
+      if (ageInfo?.isNewDomain) {
+        logger.info(
+          `[DOMAIN-AGE] Domínio novo detectado (${ageInfo.ageInDays}d): ${urlString}`,
+        );
+        securityResult = {
+          is_danger: true,
+          status: "Domínio Suspeito (Recém-Registrado)",
+          reason:
+            `Domínio registrado há apenas ${ageInfo.ageInDays} dia(s). ` +
+            "Domínios criados há menos de 30 dias são frequentemente usados em golpes.",
+        };
+      }
+    } catch (ageError) {
+      // Fail-safe: erro na consulta WHOIS nunca bloqueia a análise principal.
+      logger.warn(`[DOMAIN-AGE] Falha silenciosa na consulta WHOIS: ${ageError.message}`);
+    }
   }
 
   return { result: securityResult, fromCache: false };

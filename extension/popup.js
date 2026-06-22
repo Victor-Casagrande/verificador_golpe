@@ -283,6 +283,47 @@ document.addEventListener("DOMContentLoaded", async () => {
               li.appendChild(footer);
               listEl.appendChild(li);
             });
+
+            // Botão para inspecionar na página (highlight visual)
+            const btnInspect = document.createElement("button");
+            btnInspect.id = "btn-a11y-inspect";
+            btnInspect.textContent = "🔍 Inspecionar na página";
+            btnInspect.style.cssText = [
+              "margin-top:10px",
+              "width:100%",
+              "padding:9px",
+              "border-radius:8px",
+              "border:1px solid #30363d",
+              "background:#0d1117",
+              "color:#00d8ff",
+              "font-weight:600",
+              "font-size:12px",
+              "cursor:pointer",
+            ].join(";");
+
+            btnInspect.addEventListener("click", async () => {
+              try {
+                const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+                if (!tab?.id) return;
+                // Envia as violações completas (com nodes/seletores) para o content.js
+                chrome.tabs.sendMessage(
+                  tab.id,
+                  { action: "highlightA11yViolations", violations },
+                  (res) => {
+                    if (chrome.runtime.lastError || !res?.success) {
+                      btnInspect.textContent = "⚠️ Content script não disponível";
+                    } else {
+                      btnInspect.textContent = `✅ ${res.highlighted} elem. destacados na página`;
+                      btnInspect.disabled = true;
+                    }
+                  }
+                );
+              } catch (err) {
+                console.error(err);
+              }
+            });
+
+            a11yEl.appendChild(btnInspect);
           }
 
           a11yEl.classList.remove("hidden");
