@@ -34,18 +34,20 @@ const getUserHistory = async (req, res, next) => {
 
     const normalizedFilter = urlFilter ? normalizeAnalysisUrl(urlFilter) : null;
 
-    const [items, total] = await Promise.all([
+    const [items, stats] = await Promise.all([
       historyRepository.findByUserId(req.user.id, {
         limit,
         offset,
         urlFilter: normalizedFilter,
       }),
-      historyRepository.countByUserId(req.user.id, normalizedFilter),
+      historyRepository.countStatsByUserId(req.user.id, normalizedFilter),
     ]);
 
     return res.status(200).json({
       sucesso: true,
-      total,
+      total: stats.total,
+      safe: stats.safe,
+      danger: stats.danger,
       limit,
       offset,
       items: items.map((row) =>

@@ -64,12 +64,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (!res.ok) return; // falha silenciosa — stats ficam em 0
 
       const data = await res.json();
-      const total = data.length;
-      const safe  = data.filter(i => i.status === "safe").length;
-
-      document.getElementById("total-checks").textContent  = total;
-      document.getElementById("safe-checks").textContent   = safe;
-      document.getElementById("danger-checks").textContent = total - safe;
+      
+      document.getElementById("total-checks").textContent  = data.total || 0;
+      document.getElementById("safe-checks").textContent   = data.safe || 0;
+      document.getElementById("danger-checks").textContent = data.danger || 0;
     } catch {
       // sem conexão ou erro — mantém 0 nos cards silenciosamente
     }

@@ -69,7 +69,7 @@ const findByUserId = async (userId, { limit = 20, offset = 0, urlFilter = null }
   return result.rows;
 };
 
-const countByUserId = async (userId, urlFilter = null) => {
+const countStatsByUserId = async (userId, urlFilter = null) => {
   const params = [userId];
   let urlClause = "";
 
@@ -79,10 +79,14 @@ const countByUserId = async (userId, urlFilter = null) => {
   }
 
   const result = await db.query(
-    `SELECT COUNT(*)::int AS total FROM url_analyses WHERE user_id = $1${urlClause}`,
+    `SELECT 
+       COUNT(*)::int AS total,
+       COALESCE(SUM(CASE WHEN status = 'safe' THEN 1 ELSE 0 END), 0)::int AS safe,
+       COALESCE(SUM(CASE WHEN status != 'safe' THEN 1 ELSE 0 END), 0)::int AS danger
+     FROM url_analyses WHERE user_id = $1${urlClause}`,
     params,
   );
-  return result.rows[0].total;
+  return result.rows[0];
 };
 
 const findCachedSecurityByUrl = async (urlString) => {
@@ -144,7 +148,7 @@ module.exports = {
   saveAnalysis,
   saveAnonymousAnalysis,
   findByUserId,
-  countByUserId,
+  countStatsByUserId,
   findCachedSecurityByUrl,
   findCachedAccessibilityByUrl,
   findUrlScoreTimeline,
