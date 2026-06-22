@@ -33,13 +33,23 @@ const sanitizeViolations = (violations) => {
   if (!Array.isArray(violations)) return [];
 
   return violations.slice(0, DEV_MAX_VIOLATIONS).map((violation) => {
+    const rawNodes = Array.isArray(violation.nodes) ? violation.nodes : [];
+
     const base = {
       id:          violation.id,
       impact:      violation.impact,
       impact_pt:   IMPACT_PT[violation.impact] ?? violation.impact,
       description: violation.description,
       helpUrl:     violation.helpUrl,
-      nodes_count: Array.isArray(violation.nodes) ? violation.nodes.length : 0,
+      nodes_count: rawNodes.length,
+      // Preserva os seletores CSS de cada nó para que o content.js da extensão
+      // possa destacar visualmente os elementos na página (highlight de acessibilidade).
+      // Limitamos a 10 nós e 5 seletores por nó para manter o payload enxuto.
+      nodes: rawNodes.slice(0, DEV_MAX_NODES_PER_VIOLATION).map((node) => ({
+        target: Array.isArray(node.target)
+          ? node.target.slice(0, 5)
+          : [],
+      })),
     };
     // Enriquece com tradução em Linguagem Simples
     return enrichWithTranslation(base);

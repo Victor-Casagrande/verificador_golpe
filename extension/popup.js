@@ -2,6 +2,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   const API_URL =
     "https://sentinela-api-114594031602.southamerica-east1.run.app";
 
+  // ── WARM-UP PING silencioso ─────────────────────────────────────────
+  // Acorda o Cloud Run assim que o popup é aberto, para que o servidor já
+  // esteja aquecido quando o usuário clicar em Verificar (elimina cold start).
+  fetch(`${API_URL}/api/status`, { method: "GET", signal: AbortSignal.timeout(8000) })
+    .catch(() => {}); // fire-and-forget: ignora erros silenciosamente
+
   const storage = await chrome.storage.local.get(["jwtToken"]);
   let jwtToken = storage.jwtToken;
 
@@ -189,9 +195,45 @@ document.addEventListener("DOMContentLoaded", async () => {
       resultEl.classList.remove("hidden");
       a11yEl.classList.add("hidden");
 
+      // Barra de progresso animada (estimativa: 20s para análise completa)
+      let progressEl = document.getElementById("verify-progress");
+      if (!progressEl) {
+        progressEl = document.createElement("div");
+        progressEl.id = "verify-progress";
+        progressEl.style.cssText = [
+          "height:3px", "background:linear-gradient(90deg,#00d8ff,#0099bb)",
+          "border-radius:2px", "transition:width 0.5s ease", "width:0%",
+          "margin-top:6px",
+        ].join(";");
+        resultEl.after(progressEl);
+      }
+      progressEl.style.width = "0%";
+      progressEl.style.display = "block";
+
+      // Incrementa progresso até 90% durante a espera (os últimos 10% são
+      // completados instantaneamente quando a resposta chega).
+      let progressValue = 0;
+      const progressInterval = setInterval(() => {
+        if (progressValue < 88) {
+          progressValue += progressValue < 40 ? 4 : progressValue < 70 ? 2 : 0.5;
+          progressEl.style.width = progressValue + "%";
+        }
+      }, 600);
+
+      function finishProgress() {
+        clearInterval(progressInterval);
+        progressEl.style.width = "100%";
+        setTimeout(() => { progressEl.style.display = "none"; }, 500);
+      }
+
       chrome.runtime.sendMessage({ action: "analyzeUrl", url: tab.url }, (response) => {
+        finishProgress();
         if (chrome.runtime.lastError || !response?.success) {
-          resultEl.textContent = `❌ Erro: ${response?.error || chrome.runtime.lastError?.message || "API inacessível"}`;
+          const rawErr = response?.error || chrome.runtime.lastError?.message || "API inacessível";
+          const isTimeout = /abort|signal|timeout/i.test(rawErr);
+          resultEl.innerHTML = isTimeout
+            ? "⏱️ A análise demorou muito (servidor frio). <strong>Clique em Verificar novamente.</strong>"
+            : `❌ Erro: ${rawErr}`;
           resultEl.className = "verify-result status-danger";
           return;
         }
@@ -284,7 +326,7 @@ document.addEventListener("DOMContentLoaded", async () => {
               listEl.appendChild(li);
             });
 
-            // Botão para inspecionar na página (highlight visual)
+            // Botão para inspecionar na página (highlight visual via scripting API)
             const btnInspect = document.createElement("button");
             btnInspect.id = "btn-a11y-inspect";
             btnInspect.textContent = "🔍 Inspecionar na página";
@@ -305,25 +347,181 @@ document.addEventListener("DOMContentLoaded", async () => {
               try {
                 const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
                 if (!tab?.id) return;
-                // Envia as violações completas (com nodes/seletores) para o content.js
-                chrome.tabs.sendMessage(
-                  tab.id,
-                  { action: "highlightA11yViolations", violations },
-                  (res) => {
-                    if (chrome.runtime.lastError || !res?.success) {
-                      btnInspect.textContent = "⚠️ Content script não disponível";
-                    } else {
-                      btnInspect.textContent = `✅ ${res.highlighted} elem. destacados na página`;
-                      btnInspect.disabled = true;
+
+                // Extrai seletores CSS de cada violação para passar à função injetada.
+                // Formato: [{ id, impact, selectors: ["css-sel-1", "css-sel-2", ...] }, ...]
+                // Mapeamento de fallback: ID da regra axe → seletores CSS conhecidos.
+                // Usado quando a API retorna violações sem nodes (resultados do cache antigo).
+                const AXE_FALLBACK = {
+                  "image-alt":              ["img:not([alt])", "img[alt='']", "input[type='image']:not([alt])"],
+                  "label":                  ["input:not([type='hidden']):not([aria-label]):not([aria-labelledby]):not([title])", "select:not([aria-label]):not([aria-labelledby])", "textarea:not([aria-label]):not([aria-labelledby])"],
+                  "link-name":              ["a:not([aria-label]):not([aria-labelledby]):not([title])"],
+                  "button-name":            ["button:not([aria-label]):not([aria-labelledby]):not([title])"],
+                  "frame-title":            ["iframe:not([title])", "frame:not([title])"],
+                  "html-has-lang":          ["html:not([lang])"],
+                  "html-lang-valid":        ["html[lang]"],
+                  "document-title":         ["head"],
+                  "duplicate-id":           ["[id]"],
+                  "duplicate-id-active":    ["[id]"],
+                  "duplicate-id-aria":      ["[id]"],
+                  "tabindex":               ["[tabindex]"],
+                  "aria-required-attr":     ["[role]"],
+                  "aria-valid-attr":        ["[aria-required]", "[aria-label]"],
+                  "aria-valid-attr-value":  ["[aria-label]", "[role]"],
+                  "aria-hidden-focus":      ["[aria-hidden]"],
+                  "color-contrast":         ["p", "span", "a", "li", "h1", "h2", "h3", "h4", "h5", "h6", "td", "th"],
+                  "scrollable-region-focusable": ["[style*='overflow']"],
+                  "skip-link":              ["a:first-child"],
+                  "landmark-one-main":      ["body"],
+                  "page-has-heading-one":   ["body"],
+                  "region":                 ["body > *:not(header):not(nav):not(main):not(footer):not(aside)"],
+                  "valid-lang":             ["[lang]"],
+                  "meta-viewport":          ["meta[name='viewport']"],
+                  "focus-order-semantics":  ["[tabindex]"],
+                };
+
+                const violationData = violations.map(v => {
+                  // Seletores do servidor (nova API)
+                  const fromNodes = Array.isArray(v.nodes)
+                    ? v.nodes.flatMap(n => Array.isArray(n.target) ? n.target.filter(s => typeof s === "string") : [])
+                    : [];
+                  // Fallback local quando nodes está vazio (cache antigo)
+                  const selectors = fromNodes.length > 0
+                    ? fromNodes
+                    : (AXE_FALLBACK[v.id] || []);
+                  return { id: v.id, impact: v.impact || "minor", selectors };
+                }).filter(v => v.selectors.length > 0);
+
+                if (violationData.length === 0) {
+                  btnInspect.textContent = "⚠️ Violações sem seletores conhecidos para este site";
+                  return;
+                }
+
+                // Injeta a função de highlight diretamente no contexto da aba.
+                // Não depende de content script pré-carregado nem de mensagem.
+                const results = await chrome.scripting.executeScript({
+                  target: { tabId: tab.id },
+                  func: (violations) => {
+                    const HIGHLIGHT_CLASS = "__sentinela_a11y_hl__";
+                    const TOOLTIP_CLASS  = "__sentinela_a11y_tt__";
+                    const PANEL_ID       = "__sentinela_a11y_panel__";
+
+                    const COLORS = {
+                      critical: "#ef4444",
+                      serious:  "#f59e0b",
+                      moderate: "#eab308",
+                      minor:    "#8b949e",
+                    };
+
+                    // Remove highlights anteriores
+                    document.querySelectorAll("." + HIGHLIGHT_CLASS).forEach(el => {
+                      el.classList.remove(HIGHLIGHT_CLASS);
+                      el.style.removeProperty("outline");
+                      el.style.removeProperty("outline-offset");
+                      const tt = el.querySelector("." + TOOLTIP_CLASS);
+                      if (tt) tt.remove();
+                    });
+                    const oldPanel = document.getElementById(PANEL_ID);
+                    if (oldPanel) oldPanel.remove();
+
+                    let count = 0;
+
+                    violations.forEach(({ id, impact, selectors }) => {
+                      const color = COLORS[impact] || COLORS.minor;
+                      selectors.forEach(sel => {
+                        let els;
+                        try { els = document.querySelectorAll(sel); } catch { return; }
+                        els.forEach(el => {
+                          el.classList.add(HIGHLIGHT_CLASS);
+                          el.style.setProperty("outline", `3px dashed ${color}`, "important");
+                          el.style.setProperty("outline-offset", "2px", "important");
+
+                          // Tooltip só se ainda não tiver
+                          if (!el.querySelector("." + TOOLTIP_CLASS)) {
+                            const pos = window.getComputedStyle(el).position;
+                            if (pos === "static") el.style.setProperty("position", "relative", "important");
+
+                            const tt = document.createElement("span");
+                            tt.className = TOOLTIP_CLASS;
+                            tt.setAttribute("style", [
+                              "position:absolute",
+                              "top:-20px",
+                              "left:0",
+                              "z-index:2147483647",
+                              "background:#0d1117",
+                              "color:#00d8ff",
+                              "font:bold 10px/1 monospace",
+                              "padding:3px 6px",
+                              "border-radius:4px",
+                              "white-space:nowrap",
+                              "pointer-events:none",
+                              "border:1px solid #00d8ff",
+                            ].join(";"));
+                            tt.textContent = id + " [" + impact + "]";
+                            el.appendChild(tt);
+                          }
+                          count++;
+                        });
+                      });
+                    });
+
+                    // Painel flutuante
+                    if (count > 0) {
+                      const panel = document.createElement("div");
+                      panel.id = PANEL_ID;
+                      panel.setAttribute("style", [
+                        "position:fixed",
+                        "bottom:20px",
+                        "right:20px",
+                        "z-index:2147483647",
+                        "background:#0d1117",
+                        "border:1px solid #30363d",
+                        "border-radius:10px",
+                        "padding:10px 14px",
+                        "font:12px Inter,sans-serif",
+                        "color:#e6edf3",
+                        "display:flex",
+                        "align-items:center",
+                        "gap:10px",
+                        "box-shadow:0 8px 24px rgba(0,0,0,.6)",
+                      ].join(";"));
+
+                      panel.innerHTML =
+                        "<span>🛡️ Sentinela: <strong>" + count + "</strong> elem. destacados</span>" +
+                        "<button id='__sentinela_clear__' style='background:#ef4444;border:none;color:#fff;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:bold;cursor:pointer'>✕ Remover</button>";
+                      document.body.appendChild(panel);
+                      document.getElementById("__sentinela_clear__").addEventListener("click", () => {
+                        document.querySelectorAll("." + HIGHLIGHT_CLASS).forEach(el => {
+                          el.classList.remove(HIGHLIGHT_CLASS);
+                          el.style.removeProperty("outline");
+                          el.style.removeProperty("outline-offset");
+                          const tt = el.querySelector("." + TOOLTIP_CLASS);
+                          if (tt) tt.remove();
+                        });
+                        panel.remove();
+                      });
                     }
-                  }
-                );
+
+                    return count;
+                  },
+                  args: [violationData],
+                });
+
+                const count = results?.[0]?.result ?? 0;
+                if (count > 0) {
+                  btnInspect.textContent = `✅ ${count} elemento(s) destacados na página`;
+                  btnInspect.disabled = true;
+                } else {
+                  btnInspect.textContent = "⚠️ Nenhum elemento encontrado pelos seletores";
+                }
               } catch (err) {
-                console.error(err);
+                console.error("[Sentinela] Erro ao inspecionar:", err);
+                btnInspect.textContent = "⚠️ Erro: " + err.message;
               }
             });
 
             a11yEl.appendChild(btnInspect);
+
           }
 
           a11yEl.classList.remove("hidden");
