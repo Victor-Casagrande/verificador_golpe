@@ -4,128 +4,99 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sentinela</title>
-
   <link rel="stylesheet" href="popup.css" />
 </head>
-
 <body>
-  <div class="container">
+  <div class="container app-container">
 
     <!-- LOGIN -->
     <div id="login-view" class="view">
-
       <div class="logo-area">
-        <img src="icon.png" alt="Sentinela">
-        <h1>SENTINELA</h1>
+        <img src="logo-symbol.png" alt="Símbolo Sentinela" class="logo-symbol">
+        <img src="logo-text.png" alt="Sentinela" class="logo-text">
       </div>
 
-      <div class="auth-form">
+      <div class="auth-tabs">
+        <button class="auth-tab active" data-target="form-login">Entrar</button>
+        <button class="auth-tab" data-target="form-register">Cadastrar</button>
+      </div>
 
-  <label>Email</label>
-  <input
-    id="email"
-    type="email"
-    placeholder="Digite seu email"
-  />
+      <div id="form-login" class="auth-form">
+        <label>Email</label>
+        <input id="email" type="email" placeholder="Digite seu email" />
+        
+        <label>Senha</label>
+        <input id="password" type="password" placeholder="Digite sua senha" />
+        
+        <div class="oauth-buttons">
+          <button id="btn-google" class="oauth-btn">Google</button>
+          <button id="btn-github" class="oauth-btn">GitHub</button>
+        </div>
+        
+        <button id="btn-login-local" class="btn primary">Logar</button>
+      </div>
 
-  <label>Senha</label>
-  <input
-    id="password"
-    type="password"
-    placeholder="Digite sua senha"
-  />
+      <div id="form-register" class="auth-form hidden">
+        <label>Nome</label>
+        <input id="reg-name" type="text" placeholder="Seu nome completo" />
 
-  <div class="oauth-buttons">
-
-    <button id="btn-google" class="oauth-btn">
-      Google
-    </button>
-
-    <button id="btn-github" class="oauth-btn">
-      GitHub
-    </button>
-
-  </div>
-
-  <button id="btn-login-local" class="btn primary">
-    Logar
-  </button>
-
-</div>
-
+        <label>Email</label>
+        <input id="reg-email" type="email" placeholder="Digite seu email" />
+        
+        <label>Senha</label>
+        <input id="reg-password" type="password" placeholder="Crie sua senha" />
+        
+        <button id="btn-register-local" class="btn primary">Cadastrar</button>
+      </div>
     </div>
 
     <!-- DASHBOARD -->
     <div id="dashboard-view" class="view hidden">
-
       <div class="header-dashboard">
-        <div>
-          <h2>🛡️ Sentinela</h2>
-          <span>Central de Segurança</span>
+        <div class="header-logo-area">
+          <img src="logo-symbol.png" alt="Símbolo Sentinela" class="header-logo-symbol">
+          <img src="logo-text.png" alt="Sentinela" class="header-logo-text">
         </div>
-
-        <button id="btn-logout" class="btn-text">
-          Sair
-        </button>
+        <button id="btn-logout" class="btn-text">Sair</button>
       </div>
 
       <div class="stats">
-
         <div class="stat-card">
-          <div id="total-checks" class="stat-number">0</div>
           <div class="stat-label">Verificações</div>
+          <div id="total-checks" class="stat-number">0</div>
         </div>
-
         <div class="stat-card safe">
-          <div id="safe-checks" class="stat-number">0</div>
           <div class="stat-label">Seguros</div>
+          <div id="safe-checks" class="stat-number">0</div>
         </div>
-
         <div class="stat-card danger">
-          <div id="danger-checks" class="stat-number">0</div>
           <div class="stat-label">Suspeitos</div>
+          <div id="danger-checks" class="stat-number">0</div>
         </div>
-
       </div>
 
-      <button id="btn-report" class="btn warning">
-        🚨 Denunciar Página Atual
-      </button>
+      <button id="btn-report" class="btn warning">🚨 Denunciar Página Atual</button>
 
       <div class="tabs">
-        <button class="tab-btn active" data-target="history-tab">
-          Histórico
-        </button>
-
-        <button class="tab-btn" data-target="ranking-tab">
-          Ranking
-        </button>
-
-        <button class="tab-btn" data-target="accessibility-tab" id="btn-tab-accessibility">
-          Acessibilidade
-        </button>
+        <button class="tab-btn active" data-target="history-tab">Histórico</button>
+        <button class="tab-btn" data-target="ranking-tab">Ranking</button>
+        <button class="tab-btn" data-target="accessibility-tab" id="btn-tab-accessibility">Acessibilidade</button>
       </div>
 
       <div id="history-tab" class="tab-content">
         <ul id="history-list" class="list">
-          <li class="loading">
-            Carregando histórico...
-          </li>
+          <li class="loading">Carregando histórico...</li>
         </ul>
       </div>
 
       <div id="ranking-tab" class="tab-content hidden">
         <ul id="ranking-list" class="list">
-          <li class="loading">
-            Carregando ranking...
-          </li>
+          <li class="loading">Carregando ranking...</li>
         </ul>
       </div>
 
       <!-- ABA ACESSIBILIDADE -->
       <div id="accessibility-tab" class="tab-content hidden">
-
-        <!-- Score da página atual -->
         <div class="a11y-score-card" id="a11y-score-card">
           <div class="a11y-score-wrap">
             <span id="a11y-score-value" class="a11y-score-number">—</span>
@@ -137,64 +108,41 @@
           </div>
         </div>
 
-        <!-- Lista de violações com Linguagem Simples -->
-        <ul
-          id="accessibility-violations-list"
-          class="violations-list"
-          role="list"
-          aria-live="polite"
-          aria-label="Lista de violações de acessibilidade"
-        >
-          <li class="violation-idle">
-            Clique nesta aba para analisar a página atual.
-          </li>
+        <ul id="accessibility-violations-list" class="violations-list" role="list" aria-live="polite" aria-label="Lista de violações de acessibilidade">
+          <li class="violation-idle">Clique nesta aba para analisar a página atual.</li>
         </ul>
-
       </div>
-
     </div>
-
   </div>
 
   <!-- MODAL -->
-
   <div id="report-modal" class="modal hidden">
-
     <div class="modal-content">
-
       <h3>🚨 Denunciar Página</h3>
-
       <p id="report-domain"></p>
-
-      <textarea
-        id="report-reason"
-        rows="4"
-        placeholder="Descreva o motivo da denúncia..."
-      ></textarea>
-
+      <textarea id="report-reason" rows="4" placeholder="Descreva o motivo da denúncia..."></textarea>
       <div class="modal-actions">
-
-        <button
-          id="btn-cancel-report"
-          class="btn secondary"
-        >
-          Cancelar
-        </button>
-
-        <button
-          id="btn-confirm-report"
-          class="btn warning"
-        >
-          Confirmar
-        </button>
-
+        <button id="btn-cancel-report" class="btn secondary">Cancelar</button>
+        <button id="btn-confirm-report" class="btn warning">Confirmar</button>
       </div>
-
     </div>
-
   </div>
 
   <script src="popup.js"></script>
+
+  <!-- ALERTA DE SEGURANÇA (OVERLAY) -->
+  <div id="danger-overlay" class="danger-overlay hidden">
+    <div class="danger-content">
+      <div class="danger-icon">!</div>
+      <h1 class="danger-title">ALERTA DE SEGURANÇA</h1>
+      <div class="danger-badge">GOLPE CONFIRMADO</div>
+      <p class="danger-text">URL classificada como maliciosa pelo Google Safe Browsing.</p>
+      <div class="danger-actions">
+        <button id="btn-danger-leave" class="btn danger-btn-primary">Voltar para local seguro</button>
+        <button id="btn-danger-ignore" class="btn danger-btn-secondary">Ignorar e ver relatório</button>
+      </div>
+    </div>
+  </div>
 
 </body>
 </html>

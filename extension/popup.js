@@ -32,9 +32,66 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   });
 
-  document
-    .getElementById("btn-login-local")
-    .addEventListener("click", loginLocal);
+  // --- AUTH TABS ---
+  document.querySelectorAll(".auth-tab").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      document.querySelectorAll(".auth-tab").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll(".auth-form").forEach(f => f.classList.add("hidden"));
+      
+      e.target.classList.add("active");
+      document.getElementById(e.target.dataset.target).classList.remove("hidden");
+    });
+  });
+
+  // --- LOGIN E CADASTRO LOCAL ---
+  document.getElementById("btn-login-local").addEventListener("click", async () => {
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+
+    try {
+      const response = await fetch(`${API_URL}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        alert(data.message || "Credenciais inválidas");
+        return;
+      }
+      await chrome.storage.local.set({ jwtToken: data.token });
+      jwtToken = data.token;
+      updateView();
+    } catch (error) {
+      console.error(error);
+      alert("Erro ao realizar login");
+    }
+  });
+
+  document.getElementById("btn-register-local").addEventListener("click", async () => {
+    const name = document.getElementById("reg-name").value;
+    const email = document.getElementById("reg-email").value;
+    const password = document.getElementById("reg-password").value;
+
+    try {
+      const response = await fetch(`${API_URL}/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        alert(data.message || "Erro no cadastro");
+        return;
+      }
+      await chrome.storage.local.set({ jwtToken: data.token });
+      jwtToken = data.token;
+      updateView();
+    } catch (error) {
+      console.error(error);
+      alert("Erro ao realizar cadastro");
+    }
+  });
 
   document.getElementById("btn-logout").addEventListener("click", async () => {
     await chrome.storage.local.remove("jwtToken");
@@ -251,6 +308,16 @@ document.addEventListener("DOMContentLoaded", async () => {
           }
 
           const acc = response.data?.accessibility;
+          const security = response.data?.security;
+
+          if (security && security.status === "danger") {
+            document.querySelector(".app-container").classList.add("hidden");
+            document.getElementById("danger-overlay").classList.remove("hidden");
+          } else {
+            document.querySelector(".app-container").classList.remove("hidden");
+            document.getElementById("danger-overlay").classList.add("hidden");
+          }
+
           if (!acc) {
             list.innerHTML =
               "<li class='violation-error'>Dados de acessibilidade não disponíveis na resposta.</li>";
@@ -428,43 +495,16 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     });
 
+  // --- AÇÃO: OVERLAY DE PERIGO ---
+  document.getElementById("btn-danger-leave").addEventListener("click", () => {
+    chrome.tabs.update({ url: "https://verificador-golpe.vercel.app" });
+  });
+
+  document.getElementById("btn-danger-ignore").addEventListener("click", () => {
+    document.getElementById("danger-overlay").classList.add("hidden");
+    document.querySelector(".app-container").classList.remove("hidden");
+  });
+
   // Inicializa
   updateView();
 });
-
-async function loginLocal() {
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
-
-  try {
-    const response = await fetch(`${API_URL}/auth/login`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        email,
-        password,
-      }),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      alert(data.message || "Credenciais inválidas");
-      return;
-    }
-
-    await chrome.storage.local.set({
-      jwtToken: data.token,
-    });
-
-    // Bug #6 — window.location.reload() tem comportamento indefinido em popup
-    // de extensão. Usa updateView() que foi criada exatamente para essa troca.
-    jwtToken = data.token;
-    updateView();
-  } catch (error) {
-    console.error(error);
-    alert("Erro ao realizar login");
-  }
-}
