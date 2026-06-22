@@ -11,10 +11,18 @@ document.addEventListener("DOMContentLoaded", async () => {
   const storage = await chrome.storage.local.get(["jwtToken"]);
   let jwtToken = storage.jwtToken;
 
-  // ---- VIEWS ----
+  // ---- VIEWS E NAVEGAÇÃO GERAL ----
   const loginView     = document.getElementById("login-view");
   const registerView  = document.getElementById("register-view");
   const dashboardView = document.getElementById("dashboard-view");
+
+  // Logo clicável -> redireciona para o painel web
+  document.querySelectorAll(".header-brand").forEach(brand => {
+    brand.style.cursor = "pointer";
+    brand.addEventListener("click", () => {
+      chrome.tabs.create({ url: "https://verificador-golpe.vercel.app/dashboard" });
+    });
+  });
 
   // ---- UTILITY ----
   function showView(view) {
