@@ -28,7 +28,6 @@ body {
   font-size: var(--fs-base);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
   background-image:
     radial-gradient(
       1100px circle at 50% -200px,

@@ -83,7 +83,9 @@ const optionalAuthenticate = async (req, res, next) => {
     }
 
     return next();
-  } catch {
+  } catch (err) {
+    const logger = require("../utils/logger");
+    logger.error(`[Auth] Erro inesperado no optionalAuthenticate: ${err.message}`, { stack: err.stack });
     return next();
   }
 };

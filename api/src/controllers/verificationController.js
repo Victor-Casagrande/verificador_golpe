@@ -14,6 +14,9 @@ const verifyUrl = async (req, res, next) => {
     const devMode = parseDevMode(dev_mode);
     const userId = req.user?.id ?? null;
 
+    const logger = require("../utils/logger");
+    logger.info(`[verificationController] req.user=${!!req.user}, userId=${userId}`);
+
     const analysisResult = await verificationService.verifyUrl(
       url,
       accessibility_report,

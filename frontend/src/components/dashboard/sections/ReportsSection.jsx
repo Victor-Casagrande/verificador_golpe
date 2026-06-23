@@ -82,7 +82,7 @@ export default function ReportsSection() {
             size="sm"
             onClick={() => setIsAdminMode(!isAdminMode)}
           >
-            {isAdminMode ? "Ver Ranking Público" : "⚙️ Gerenciar Denúncias"}
+            {isAdminMode ? "Ver Ranking Público" : "Gerenciar Denúncias"}
           </Button>
         )
       }
