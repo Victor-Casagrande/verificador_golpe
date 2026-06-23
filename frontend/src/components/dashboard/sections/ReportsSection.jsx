@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import Panel from "../Panel.jsx";
 import Badge from "../Badge.jsx";
+import Button from "../../ui/Button.jsx";
 import { getMostReported } from "../../../api/rankings.js";
 import { getAdminReports, updateAdminReportStatus } from "../../../api/admin.js";
 import { ApiError } from "../../../api/client.js";
@@ -76,12 +77,13 @@ export default function ReportsSection() {
       subtitle={isAdminMode ? "Painel administrativo de denúncias" : "Ranking público dos endereços mais reportados pelos usuários."}
       actions={
         isAdmin && (
-          <button
+          <Button
+            variant={isAdminMode ? "secondary" : "primary"}
+            size="sm"
             onClick={() => setIsAdminMode(!isAdminMode)}
-            style={{ padding: "6px 12px", borderRadius: "6px", cursor: "pointer", background: "var(--color-primary)", color: "white", border: "none" }}
           >
             {isAdminMode ? "Ver Ranking Público" : "⚙️ Gerenciar Denúncias"}
-          </button>
+          </Button>
         )
       }
     >
@@ -130,7 +132,15 @@ export default function ReportsSection() {
                   <select
                     value={row.status || 'aguardando análise'}
                     onChange={(e) => handleStatusChange(row.id, e.target.value)}
-                    style={{ padding: '4px', borderRadius: '4px', fontSize: '0.85rem' }}
+                    style={{ 
+                      padding: '4px 8px', 
+                      borderRadius: '4px', 
+                      fontSize: '0.85rem',
+                      background: 'var(--color-surface)',
+                      color: 'var(--color-text)',
+                      border: '1px solid var(--color-border)',
+                      cursor: 'pointer'
+                    }}
                   >
                     <option value="aguardando análise">Aguardando Análise</option>
                     <option value="sendo analisada">Sendo Analisada</option>
