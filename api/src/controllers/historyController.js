@@ -97,7 +97,37 @@ const getUrlScoreTimeline = async (req, res, next) => {
   }
 };
 
+const getGlobalHistory = async (req, res, next) => {
+  try {
+    const limit = parsePagination(req.query.limit, 20, 100);
+    const offset = parsePagination(req.query.offset, 0);
+
+    const [items, stats] = await Promise.all([
+      historyRepository.findAllGlobal({ limit, offset }),
+      historyRepository.countStatsGlobal(),
+    ]);
+
+    return res.status(200).json({
+      sucesso: true,
+      total: stats.total,
+      safe: stats.safe,
+      danger: stats.danger,
+      limit,
+      offset,
+      items: items.map((row) =>
+        formatAnalysisRow({
+          ...row,
+          violations_count: 0,
+        }),
+      ),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getUserHistory,
   getUrlScoreTimeline,
+  getGlobalHistory,
 };

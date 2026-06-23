@@ -144,6 +144,31 @@ const findSiteHostTimeline = async (siteHost, { limit = 30 } = {}) => {
   return result.rows;
 };
 
+const findAllGlobal = async ({ limit = 50, offset = 0 } = {}) => {
+  const result = await db.query(
+    `SELECT a.id, a.url, a.site_host, a.is_danger, a.status, a.reason,
+            a.accessibility_score, a.quality_rating, a.axe_source,
+            a.created_at, u.name as user_name, u.email as user_email
+     FROM url_analyses a
+     LEFT JOIN users u ON a.user_id = u.id
+     ORDER BY a.created_at DESC
+     LIMIT $1 OFFSET $2`,
+    [limit, offset]
+  );
+  return result.rows;
+};
+
+const countStatsGlobal = async () => {
+  const result = await db.query(
+    `SELECT 
+       COUNT(*)::int AS total,
+       COALESCE(SUM(CASE WHEN status = 'safe' THEN 1 ELSE 0 END), 0)::int AS safe,
+       COALESCE(SUM(CASE WHEN status != 'safe' THEN 1 ELSE 0 END), 0)::int AS danger
+     FROM url_analyses`
+  );
+  return result.rows[0];
+};
+
 module.exports = {
   saveAnalysis,
   saveAnonymousAnalysis,
@@ -153,4 +178,6 @@ module.exports = {
   findCachedAccessibilityByUrl,
   findUrlScoreTimeline,
   findSiteHostTimeline,
+  findAllGlobal,
+  countStatsGlobal,
 };

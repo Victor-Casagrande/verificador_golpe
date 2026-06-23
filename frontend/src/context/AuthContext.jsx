@@ -32,6 +32,16 @@ import { setTokenGetter, ApiError } from "../api/client.js";
 
 const STORAGE_KEY = import.meta.env.VITE_AUTH_STORAGE_KEY || "sentinela.jwt";
 
+const ADMIN_EMAILS = [
+  "duarte312lopes@gmail.com",
+  "fabricio.bizotto@ifc.edu.br",
+  "matheustrombetta2020@gmail.com",
+  "tiago.goncalves@ifc.edu.br",
+  "tiago.heineck@ifc.edu.br",
+  "victorcasagrande0205@gmail.com",
+  "willighan173@gmail.com"
+];
+
 const AuthContext = createContext(null);
 
 /**
@@ -233,6 +243,7 @@ export function AuthProvider({ children }) {
       token: auth.token,
       user: auth.user,
       isAuthenticated: Boolean(auth.token),
+      isAdmin: Boolean(auth.user?.email && ADMIN_EMAILS.includes(auth.user.email)),
       pendingProvider,
       loginLocal,
       registerLocal,

@@ -10,6 +10,16 @@ const tokenBlacklistRepository = require("../repositories/tokenBlacklistReposito
 const AppError = require("../utils/AppError");
 const { verifyToken } = require("../utils/jwt");
 
+const ADMIN_EMAILS = [
+  "duarte312lopes@gmail.com",
+  "fabricio.bizotto@ifc.edu.br",
+  "matheustrombetta2020@gmail.com",
+  "tiago.goncalves@ifc.edu.br",
+  "tiago.heineck@ifc.edu.br",
+  "victorcasagrande0205@gmail.com",
+  "willighan173@gmail.com"
+];
+
 const extractBearerToken = (req) => {
   const header = req.headers.authorization;
 
@@ -78,7 +88,16 @@ const optionalAuthenticate = async (req, res, next) => {
   }
 };
 
+const isAdmin = (req, res, next) => {
+  if (!req.user || !ADMIN_EMAILS.includes(req.user.email)) {
+    return next(new AppError("Acesso restrito a administradores.", 403));
+  }
+  return next();
+};
+
 module.exports = {
   authenticate,
   optionalAuthenticate,
+  isAdmin,
+  ADMIN_EMAILS,
 };

@@ -158,11 +158,35 @@ const getMostReportedSites = async (req, res, next) => {
   }
 };
 
+const getAllAdminReports = async (req, res, next) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit, 10) || 50, 100);
+    const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
+    const { items } = await reportService.getAllAdminReports({ limit, offset });
+    return res.status(200).json({ sucesso: true, items });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateReportStatus = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const report = await reportService.updateReportStatus(id, status);
+    return res.status(200).json({ sucesso: true, report });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createReport,
   getMyReports,
   getWorstAccessibilityRankings,
   getBestAccessibilityRankings,
   getMostReportedSites,
+  getAllAdminReports,
+  updateReportStatus,
   rankingCache, // Exported for testing purposes to flush if needed
 };

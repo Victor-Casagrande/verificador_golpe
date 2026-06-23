@@ -95,6 +95,27 @@ const findReportStatsByUrl = async (limit = 10) => {
   return result.rows;
 };
 
+const findAllAdmin = async ({ limit = 50, offset = 0 } = {}) => {
+  const result = await db.query(
+    `SELECT r.id, r.url_analysis_id, r.url, r.report_type, r.comment, r.created_at, r.status,
+            u.name as user_name, u.email as user_email
+       FROM reports r
+       JOIN users u ON r.user_id = u.id
+      ORDER BY r.created_at DESC
+      LIMIT $1 OFFSET $2`,
+    [limit, offset]
+  );
+  return result.rows;
+};
+
+const updateStatus = async (reportId, status) => {
+  const result = await db.query(
+    `UPDATE reports SET status = $1 WHERE id = $2 RETURNING *`,
+    [status, reportId]
+  );
+  return result.rows[0];
+};
+
 module.exports = {
   VALID_REPORT_TYPES,
   create,
@@ -103,4 +124,6 @@ module.exports = {
   findWorstAccessibilitySites,
   findBestAccessibilitySites,
   findReportStatsByUrl,
+  findAllAdmin,
+  updateStatus,
 };

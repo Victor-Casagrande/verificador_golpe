@@ -7,6 +7,7 @@ import AnalyzeSection from "../components/dashboard/sections/AnalyzeSection.jsx"
 import HistorySection from "../components/dashboard/sections/HistorySection.jsx";
 import RankingsSection from "../components/dashboard/sections/RankingsSection.jsx";
 import ReportsSection from "../components/dashboard/sections/ReportsSection.jsx";
+import AdminLogsSection from "../components/dashboard/sections/AdminLogsSection.jsx";
 import styles from "./Dashboard.module.css";
 
 const Icon = {
@@ -88,10 +89,20 @@ const SECTIONS = [
     requiresAuth: true,
     Component: ReportsSection,
   },
+  {
+    id: "admin-logs",
+    label: "Painel Admin",
+    icon: Icon.rankings, // using the same icon as rankings for simplicity
+    title: "Informações Administrativas em tempo real",
+    subtitle: "Logs globais e verificações",
+    requiresAuth: true,
+    requiresAdmin: true,
+    Component: AdminLogsSection,
+  },
 ];
 
 export default function Dashboard({ onBackToSite }) {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isAdmin } = useAuth();
   const [active, setActive] = useState("analyze");
   const [collapsed, setCollapsed] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -122,10 +133,12 @@ export default function Dashboard({ onBackToSite }) {
     };
   }, [mobileNavOpen]);
 
-  const current = SECTIONS.find((s) => s.id === active) || SECTIONS[0];
+  const VISIBLE_SECTIONS = SECTIONS.filter(s => !s.requiresAdmin || isAdmin);
+  
+  const current = VISIBLE_SECTIONS.find((s) => s.id === active) || VISIBLE_SECTIONS[0];
   const ActiveSection = current.Component;
 
-  const lockedIds = isAuthenticated ? [] : SECTIONS.filter((s) => s.requiresAuth).map((s) => s.id);
+  const lockedIds = isAuthenticated ? [] : VISIBLE_SECTIONS.filter((s) => s.requiresAuth).map((s) => s.id);
 
   const handleSelect = (id) => {
     if (lockedIds.includes(id)) {
@@ -136,7 +149,7 @@ export default function Dashboard({ onBackToSite }) {
     setMobileNavOpen(false);
   };
 
-  const navItems = SECTIONS.map(({ id, label, icon }) => ({ id, label, icon }));
+  const navItems = VISIBLE_SECTIONS.map(({ id, label, icon }) => ({ id, label, icon }));
 
   return (
     <div className={styles.shell}>

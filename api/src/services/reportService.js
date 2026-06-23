@@ -51,10 +51,21 @@ const getMostReportedSites = async ({ limit }) => {
   return reportRepository.findReportStatsByUrl(limit);
 };
 
+const getAllAdminReports = async ({ limit, offset }) => {
+  const items = await reportRepository.findAllAdmin({ limit, offset });
+  return { items };
+};
+
+const updateReportStatus = async (reportId, status) => {
+  return reportRepository.updateStatus(reportId, status);
+};
+
 module.exports = {
   createReport,
   getUserReports,
   getWorstAccessibilityRankings,
   getBestAccessibilityRankings,
   getMostReportedSites,
+  getAllAdminReports,
+  updateReportStatus,
 };
