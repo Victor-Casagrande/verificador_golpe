@@ -15,6 +15,8 @@ const formatAnalysisRow = (row) => ({
     (Array.isArray(row.accessibility_violations) ? row.accessibility_violations.length : undefined),
   axe_source: row.axe_source,
   security_from_cache: row.security_from_cache,
+  user_name: row.user_name,
+  user_email: row.user_email,
   created_at: row.created_at,
 });
 
