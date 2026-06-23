@@ -16,4 +16,4 @@ export const updateAdminReportStatus = (id, status) =>
   patch(`/reports/admin/${id}/status`, { status }, { auth: true });
 
 export const getAdminLogs = ({ limit = 50, offset = 0 } = {}) =>
-  get(`/history/admin${buildQs({ limit, offset })}`, { auth: true });
+  get(`/users/history/admin${buildQs({ limit, offset })}`, { auth: true });
