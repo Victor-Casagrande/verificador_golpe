@@ -74,7 +74,7 @@ export default function ReportsSection() {
       eyebrow={isAdminMode ? "Admin" : "Comunidade"}
       title={isAdminMode ? "Gerenciar Denúncias" : "Sites com mais denúncias"}
       subtitle={isAdminMode ? "Painel administrativo de denúncias" : "Ranking público dos endereços mais reportados pelos usuários."}
-      action={
+      actions={
         isAdmin && (
           <button
             onClick={() => setIsAdminMode(!isAdminMode)}
