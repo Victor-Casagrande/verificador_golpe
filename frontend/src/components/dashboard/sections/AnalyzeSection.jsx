@@ -373,7 +373,9 @@ export default function AnalyzeSection() {
                   {security?.is_danger ? "Risco detectado" : "Seguro"}
                 </Badge>
               </div>
-              <p className={styles.verdictStatus}>{security?.status}</p>
+              <p className={styles.verdictStatus}>
+                {security?.status === "safe" ? "Seguro" : security?.status}
+              </p>
               <p className={styles.verdictReason}>{security?.reason}</p>
             </div>
 
@@ -398,8 +400,11 @@ export default function AnalyzeSection() {
                   <div className={common.kpiLabel}>Penalidade</div>
                 </div>
                 <div className={common.kpi}>
-                  <div className={common.kpiValue} style={{ fontSize: "1rem" }}>
-                    {accessibility?.axe_source || "—"}
+                  <div className={common.kpiValue} style={{ fontSize: "1rem", textAlign: "center" }}>
+                    {accessibility?.axe_source === "server" ? "Servidor (Puppeteer)" :
+                     accessibility?.axe_source === "client" ? "Extensão (Cliente)" :
+                     accessibility?.axe_source === "skipped" ? "Ignorado" :
+                     (accessibility?.axe_source || "—")}
                   </div>
                   <div className={common.kpiLabel}>Fonte</div>
                 </div>
@@ -433,9 +438,18 @@ export default function AnalyzeSection() {
                       <li key={v.id || i} className={`${styles.violation} ${cardClass}`}>
                         <div className={styles.violationHead}>
                           <Badge tone={impactTone(impact)}>{impactLabel(impact)}</Badge>
-                          <span className={styles.violationId}>{v.id}</span>
+                          <span className={styles.violationId}>{v.human_title || v.id}</span>
                         </div>
-                        {v.description && <p className={styles.violationDesc}>{v.description}</p>}
+                        {(v.human_description || v.description) && (
+                          <p className={styles.violationDesc}>
+                            {v.human_description || v.description}
+                          </p>
+                        )}
+                        {v.human_tip && (
+                          <p className={styles.violationDesc} style={{ marginTop: "4px", fontSize: "0.85em", opacity: 0.8 }}>
+                            💡 {v.human_tip}
+                          </p>
+                        )}
                         {Array.isArray(v.nodes) && v.nodes.length > 0 && (
                           <p className={styles.violationNodes}>
                             {v.nodes.length} elemento(s) afetado(s)
@@ -496,7 +510,12 @@ export default function AnalyzeSection() {
                         <div className={common.rowMeta}>
                           <span>{formatDateTime(p.created_at)}</span>
                           <span>{toNumber(p.violations_count)} violações</span>
-                          <span>{p.axe_source}</span>
+                          <span>
+                            {p.axe_source === "server" ? "Servidor" :
+                             p.axe_source === "client" ? "Extensão" :
+                             p.axe_source === "skipped" ? "Ignorado" :
+                             p.axe_source}
+                          </span>
                         </div>
                       </div>
                       <div className={common.rowAside}>
