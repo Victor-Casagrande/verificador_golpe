@@ -58,7 +58,7 @@ const checkStaticHeuristics = (urlString) => {
     if (isWhitelisted) {
       return {
         is_danger: false,
-        status: "Seguro",
+        status: "safe",
         reason: "Domínio conhecido e confiável (Whitelist).",
       };
     }
@@ -120,7 +120,7 @@ const checkStaticHeuristics = (urlString) => {
 
     return {
       is_danger: false,
-      status: "Seguro",
+      status: "safe",
       reason: "Nenhuma ameaça heurística significativa.",
     };
   } catch {
