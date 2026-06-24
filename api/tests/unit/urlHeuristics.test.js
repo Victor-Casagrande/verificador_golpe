@@ -8,7 +8,7 @@ describe("urlHeuristics", () => {
     for (const url of fixtures.safe) {
       const result = checkStaticHeuristics(url);
       assert.equal(result.is_danger, false, `esperado seguro: ${url}`);
-      assert.equal(result.status, "Seguro");
+      assert.equal(result.status, "safe");
     }
   });
 
@@ -29,6 +29,6 @@ describe("urlHeuristics", () => {
   it("URLs com hostname válido mas protocolo ftp passam na heurística estrutural", () => {
     const result = checkStaticHeuristics("ftp://arquivos.local/file");
     assert.equal(result.is_danger, false);
-    assert.equal(result.status, "Seguro");
+    assert.equal(result.status, "safe");
   });
 });
