@@ -1,0 +1,144 @@
+\documentclass[12pt, a4paper]{article}
+
+% --- PACOTES FUNDAMENTAIS ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[brazil]{babel}
+\usepackage{helvet}
+\renewcommand{\familydefault}{\sfdefault} % Configura a fonte para Arial/Helvetica
+\usepackage{amsmath} % Necessário para o comando \text{} nas fórmulas
+\usepackage{graphicx}
+\usepackage{enumitem} % Para formatar listas enumeradas e não ordenadas
+\usepackage{indentfirst} % Indenta o primeiro parágrafo de cada seção (Padrão ABNT)
+\usepackage{setspace} % Para o espaçamento entrelinhas de 1.5
+\usepackage{xurl} % Permite a quebra de linha em URLs longas em qualquer ponto
+\usepackage[hidelinks]{hyperref} % Transforma URLs em links sem caixas coloridas
+\urlstyle{same} % Mantém a mesma fonte do texto nas URLs, evitando fonte de máquina de escrever
+
+% --- CONFIGURAÇÃO DE MARGENS E CABEÇALHO ---
+% O headheight de 2.5cm empurra o texto para baixo, dando espaço para a imagem não sobrepor
+\usepackage[a4paper, top=4cm, headheight=2.5cm, bottom=2cm, left=3cm, right=2cm]{geometry}
+\usepackage{fancyhdr}
+
+\pagestyle{fancy}
+\fancyhf{} % Limpa configurações anteriores
+\renewcommand{\headrulewidth}{0pt} % Remove a linha preta abaixo do cabeçalho
+% Adiciona o logotipo/cabeçalho da FICE em todas as páginas
+\chead{\noindent\includegraphics[width=\textwidth]{Imagem1.png}}
+
+% --- ESPAÇAMENTO DAS NOTAS DE RODAPÉ ---
+% Impede que o corpo do texto (como a lista a, b, c) encoste nas informações dos alunos
+\setlength{\skip\footins}{1.5cm} 
+
+% --- ATALHO DE FORMATAÇÃO PARA OS TÍTULOS DAS SEÇÕES ---
+% Garante o espaçamento exigido pelo modelo (Dois espaçamentos de 1,5 antes de cada seção)
+\newcommand{\titlesection}[1]{
+    \vspace{1.5em}
+    \noindent\textbf{\MakeUppercase{#1}}
+    \vspace{1em}\par
+}
+
+\begin{document}
+% Define o espaçamento 1.5 para o corpo do texto
+\onehalfspacing
+
+% --- TÍTULO E AUTORES ---
+\begin{center}
+    \textbf{DESENVOLVIMENTO DE UMA EXTENSÃO DE NAVEGADOR PARA ANÁLISE DE ACESSIBILIDADE E SEGURANÇA EM PÁGINAS WEB: sentinela apl}
+    
+    \vspace{1.5em}
+    Victor Casagrande$^{1}$; Willighan Tinelli de Souza$^{2}$; Lucas Duarte Lopes$^{3}$; Matheus Trombetta Degaraes$^{4}$
+\end{center}
+
+% Notas de rodapé com as afiliações
+\footnotetext[1]{Estudante do curso de Ciência da Computação. Instituto Federal Catarinense (IFC) - Campus Videira. E-mail: victorcasagrande0205@gmail.com}
+\footnotetext[2]{Estudante do curso de Ciência da Computação. Instituto Federal Catarinense (IFC) - Campus Videira. E-mail: willighan173@gmail.com}
+\footnotetext[3]{Estudante do curso de Ciência da Computação. Instituto Federal Catarinense (IFC) - Campus Videira. E-mail: duarte312lopes@gmail.com}
+\footnotetext[4]{Estudante do curso de Ciência da Computação. Instituto Federal Catarinense (IFC) - Campus Videira. E-mail: matheustrombetta2020@gmail.com}
+
+% --- INTRODUÇÃO ---
+\titlesection{INTRODUÇÃO}
+
+A expansão da internet democratizou o acesso à informação e aos serviços digitais, mas também evidenciou falhas estruturais em dois pilares essenciais: a acessibilidade e a segurança. No cenário atual, a infraestrutura da web frequentemente ignora as recomendações do \textit{World Wide Web Consortium} (W3C), criando barreiras que excluem pessoas com deficiência. Paralelamente, a sofisticação da engenharia social expõe usuários a ataques cibernéticos contínuos. A falta de interfaces acessíveis e os riscos de segurança degradam a experiência de navegação, transformando o meio digital em um ambiente hostil para usuários leigos.
+
+O presente trabalho teve como objetivo geral desenvolver e testar uma extensão de navegador na arquitetura Manifest V3 que analisa páginas web em tempo real, fornecendo diagnósticos integrados e simplificados sobre acessibilidade digital e segurança. O intuito principal foi educar usuários e desenvolvedores iniciantes sobre boas práticas web e prevenção de ameaças. A justificativa para este desenvolvimento baseia-se na gravidade do problema de acessibilidade apontada pelo WebAIM Million (2024), e no fato de o Brasil figurar como um dos principais alvos de ataques digitais no mundo, maioritariamente impulsionados por técnicas de phishing. Dessa forma, busca-se mitigar a "fadiga de alerta" ao apresentar informações em Linguagem Simples (\textit{Plain Language}).
+
+% --- PROCEDIMENTOS METODOLÓGICOS ---
+\titlesection{PROCEDIMENTOS METODOLÓGICOS (materiais e métodos)}
+
+O projeto consistiu em uma pesquisa aplicada focada no desenvolvimento e integração de um software (Sentinela APL) composto por uma extensão de navegador, uma API e um \textit{Dashboard}.
+
+\begin{enumerate}[label=\alph*)]
+    \item Início e término da implementação do projeto: O projeto foi desenvolvido no período compreendido entre fevereiro e julho de 2026.
+    \item Local onde foi desenvolvido o trabalho: Instituto Federal Catarinense (IFC) - Campus Videira.
+    \item População envolvida: Usuários leigos em navegação na web e desenvolvedores iniciantes que necessitam compreender a acessibilidade web e as diretrizes de segurança.
+    \item Instrumentos utilizados: Foram empregadas ferramentas como Node.js e Express para a API, PostgreSQL para persistência de dados, React para o frontend web, a Google Safe Browsing API para segurança, e a biblioteca Axe-core integrada ao Chromium via Puppeteer para análise de acessibilidade.
+    \item Procedimentos: O desenvolvimento obedeceu às diretrizes do Manifest V3 do Google Chrome. O processo envolveu o mapeamento de normativas (WCAG 2.2 e ABNT NBR 17225:2025), a construção da API em Node.js para intermediação de consultas de segurança e varreduras \textit{headless} do DOM, e o projeto da interface de usuário com base na Linguagem Simples.
+    \item Métodos de análise dos dados: A validação do funcionamento foi realizada por meio de testes de software (caixa-branca) e testes integrados, simulando interceptações de ameaças com URLs da base de testes da Google Safe Browsing API, além da varredura de páginas controladas injetadas com violações de acessibilidade para atestar a precisão do motor.
+\end{enumerate}
+
+% --- RESULTADOS E DISCUSSÕES ---
+\titlesection{RESULTADOS E DISCUSSÕES}
+
+Os resultados do projeto culminaram na criação do Sentinela APL, uma plataforma integrada de segurança e acessibilidade que cumpre os requisitos previamente propostos. A solução final foi estruturada em três grandes componentes em sincronia: a Extensão Chrome, a API Node.js e o Frontend Web React.
+
+A extensão Chrome foi construída inteiramente na arquitetura Manifest V3, garantindo adequação aos padrões modernos dos navegadores e performance segura. A extensão atua como interface primária (\textit{client-side}), onde os chamados de verificação são ativados dinamicamente em cada navegação. Ao identificar uma URL associada a um risco de segurança e classificá-la como perigosa, a extensão exibe um \textit{overlay} vermelho que bloqueia a renderização da tela, protegendo o usuário instantaneamente de forma visual e simples. Nas páginas consideradas seguras, o processamento de acessibilidade é disparado, resultando em uma pontuação devolvida no console do desenvolvedor. A fim de conferir resiliência à aplicação, foi elaborada uma estrutura \textit{offline-first} para o bloqueio e também recursos de \textit{caching} de 24 horas para aliviar chamadas recorrentes à API. Caso os bancos de dados fiquem indisponíveis, as ferramentas de proteção e pontuação operam de maneira ininterrupta.
+
+Na camada de segurança da API, implantou-se uma verificação híbrida. Inicialmente a URL é enviada à Google Safe Browsing API. Caso a URL não seja acusada na lista suja de inteligência global de phishing ou malware, a requisição passa por um conjunto de sete heurísticas locais, atestando a robustez da detecção de falhas de engenharia social quando o serviço global não reporta ameaças:
+
+\begin{itemize}[noitemsep]
+    \item \textbf{IP literal no hostname:} URLs com endereço numérico direto;
+    \item \textbf{Excesso de hífens:} três ou mais hífens no domínio;
+    \item \textbf{TLD de baixa reputação:} uso de domínios restritos (como .tk, .ml, .xyz, .top);
+    \item \textbf{DNS dinâmico / túnel:} subdomínios associados a serviços como ngrok.io ou duckdns.org;
+    \item \textbf{Palavras-chave suspeitas:} strings como \textit{login}, \textit{secure}, \textit{banking} ou \textit{password};
+    \item \textbf{Subdomínios excessivos:} cinco ou mais segmentos no hostname;
+    \item \textbf{URL muito longa:} comprimento superior a 200 caracteres.
+\end{itemize}
+
+Caso aprovada em todas essas heurísticas, a URL é classificada como segura.
+
+A auditoria de acessibilidade apresentou um de seus maiores trunfos metodológicos através da adoção do Axe-core executado no backend por meio do Puppeteer em modo Chromium \textit{headless}. Os resultados foram interpretados por meio de uma pontuação escalável idealizada para ambientes reais, classificando-se pesos proporcionais aos impactos de cada violação (peso 10 para críticas, 5 para sérias, 2 para moderadas e 1 para menores) e aplicando um teto de retorno logarítmico para não punir injustamente sites extensos por repetições do mesmo erro na árvore DOM. A engenharia da métrica consolidou-se na seguinte equação de declínio suave:
+
+\[ \text{Quality\_Rating} = 100 \times e^{\left(\frac{-\text{Penalidade\_Efetiva}}{150}\right)} \]
+
+Com penalidade zero a nota é 100, e conforme as violações aumentam, a nota decai de forma curva exponencial, julgando a experiência real de navegação de forma mais justa e sem quedas abruptas a zero.
+
+Por fim, o componente Frontend React em conjunto com o armazenamento no PostgreSQL ofereceu um painel em estilo de \textit{dashboard} moderno. A implementação abrigou sistemas de conta unificada, em que o mesmo e-mail (seja por senha local ou OAuth Google/GitHub) vincula-se a um único histórico imutável. Nesse portal web público, os usuários possuem acesso a \textit{rankings} de \textit{analytics} exatos, divididos em abas de "Melhores e Piores notas médias de acessibilidade por host" e "Sites mais denunciados". Essa visualização, somada aos relatórios pessoais com detalhamentos dos erros e envio de denúncias manuais, fomenta diretamente o aspecto comunitário da plataforma.
+
+% --- CONSIDERAÇÕES FINAIS ---
+\titlesection{CONSIDERAÇÕES FINAIS}
+
+O desenvolvimento do Sentinela APL atendeu com sucesso aos objetivos primários de prover uma internet mais segura e contribuir para a educação e inclusão digital. A união entre a validação de diretrizes avançadas de acessibilidade e o monitoramento em tempo real de malwares/phishing consolida o programa em uma ferramenta unificada de fácil uso.
+
+As exigências arquitetônicas impostas pela transição para o Manifest V3 tornaram-se uma oportunidade para projetar \textit{Service Workers} escaláveis e enxutos. O design com foco em Linguagem Simples nas sinalizações e telas de bloqueio mitigou expressivamente o atrito com os usuários leigos, transpassando o obstáculo comum da "fadiga de alerta" ao traduzir nomenclaturas técnicas complexas em recomendações pragmáticas de uso e advertências óbvias.
+
+De forma mais ampla, os resultados mostram que o sistema não apenas cumpre um papel combativo contra fraudes contemporâneas, mas atua no engajamento da comunidade de desenvolvedores ao apresentar painéis práticos com infrações (WCAG 2.2 e NBR 17225) sobrepostas à pontuação das aplicações, pavimentando o caminho para uma web fundamentada nos pilares do acesso e da segurança.
+
+% --- REFERÊNCIAS ---
+\begin{center}
+    \vspace{1.5em}
+    \textbf{REFERÊNCIAS}
+    \vspace{1em}
+\end{center}
+
+\begin{singlespace}
+\noindent ASSOCIAÇÃO BRASILEIRA DE NORMAS TÉCNICAS. NBR 17225: Acessibilidade em conteúdo e aplicações web - Requisitos. Rio de Janeiro, 2025.
+
+\vspace{1em}
+\noindent BRASIL. Lei nº 13.146, de 6 de julho de 2015. Institui a Lei Brasileira de Inclusão da Pessoa com Deficiência (Estatuto da Pessoa com Deficiência). Diário Oficial da União: seção 1, Brasília, DF, ano 152, n. 127, p. 2-11, 7 jul. 2015.
+
+\vspace{1em}
+\noindent DEQUE SYSTEMS. Axe-core: Accessibility engine for automated Web UI testing. [S. l.], 2024. Disponível em: \url{https://github.com/dequelabs/axe-core}. Acesso em: 27 mar. 2026.
+
+\vspace{1em}
+\noindent GOOGLE. Safe Browsing API v4. Mountain View, 2024. Disponível em: \url{https://developers.google.com/safe-browsing}. Acesso em: 27 mar. 2026.
+
+\vspace{1em}
+\noindent W3C. Web Content Accessibility Guidelines (WCAG) 2.2. [S. l.], 2023. Disponível em: \url{https://www.w3.org/TR/WCAG22/}. Acesso em: 27 mar. 2026.
+
+\vspace{1em}
+\noindent WEBAIM. The WebAIM Million: An annual accessibility analysis of the top 1,000,000 home pages. Logan, UT, 2024. Disponível em: \url{https://webaim.org/projects/million/}. Acesso em: 27 mar. 2026.
+\end{singlespace}
+
+\end{document}

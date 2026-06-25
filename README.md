@@ -8,10 +8,10 @@ Protótipo de UI: [Figma](https://www.figma.com/design/cSpctw3HFH3WtnrcE4Sxm0/Pr
 
 ## Autores
 
-| Grupo Sentinela APL |
-|---|
-| **Victor Casagrande** |
-| **Lucas Duarte Lopes** |
+| Grupo Sentinela APL            |
+| ------------------------------ |
+| **Victor Casagrande**          |
+| **Lucas Duarte Lopes**         |
 | **Matheus Trombetta Degaraes** |
 | **Willighan Tinelli de Souza** |
 
@@ -25,12 +25,12 @@ Licenciado sob [GNU GPL v3.0](LICENSE).
 
 O Sentinela protege o usuário durante a navegação e avalia a qualidade de acessibilidade dos sites visitados.
 
-| Componente | Papel |
-|---|---|
-| **Extensão Chrome (MV3)** | Analisa cada página visitada, bloqueia sites perigosos com overlay vermelho e exibe a nota de acessibilidade |
-| **API Node.js / Express** | Orquestra verificação de segurança, auditoria axe-core e persistência de dados |
-| **Frontend React (Vercel)** | Dashboard com histórico, rankings e analytics |
-| **PostgreSQL** | Histórico de análises, contas, denúncias e agregações |
+| Componente                  | Papel                                                                                                        |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| **Extensão Chrome (MV3)**   | Analisa cada página visitada, bloqueia sites perigosos com overlay vermelho e exibe a nota de acessibilidade |
+| **API Node.js / Express**   | Orquestra verificação de segurança, auditoria axe-core e persistência de dados                               |
+| **Frontend React (Vercel)** | Dashboard com histórico, rankings e analytics                                                                |
+| **PostgreSQL**              | Histórico de análises, contas, denúncias e agregações                                                        |
 
 ---
 
@@ -44,15 +44,15 @@ Cada URL passa por três camadas, nesta ordem:
 2. **Google Safe Browsing** — detecta phishing, malware e engenharia social.
 3. **Heurísticas locais** — sete regras estruturais quando o Google não reporta ameaça:
 
-| Regra | O que sinaliza |
-|---|---|
-| IP literal no hostname | URLs com endereço numérico direto |
-| Excesso de hífens | 3 ou mais hífens no domínio |
-| TLD de baixa reputação | `.tk`, `.ml`, `.ga`, `.cf`, `.gq`, `.xyz`, `.top`, `.pw` |
-| DNS dinâmico / túnel | `ngrok.io`, `duckdns.org`, `noip.com`, `ddns.net`, etc. |
+| Regra                    | O que sinaliza                                           |
+| ------------------------ | -------------------------------------------------------- |
+| IP literal no hostname   | URLs com endereço numérico direto                        |
+| Excesso de hífens        | 3 ou mais hífens no domínio                              |
+| TLD de baixa reputação   | `.tk`, `.ml`, `.ga`, `.cf`, `.gq`, `.xyz`, `.top`, `.pw` |
+| DNS dinâmico / túnel     | `ngrok.io`, `duckdns.org`, `noip.com`, `ddns.net`, etc.  |
 | Palavras-chave suspeitas | `login`, `secure`, `banking`, `verify`, `password`, etc. |
-| Subdomínios excessivos | 5 ou mais segmentos no hostname |
-| URL muito longa | Mais de 200 caracteres |
+| Subdomínios excessivos   | 5 ou mais segmentos no hostname                          |
+| URL muito longa          | Mais de 200 caracteres                                   |
 
 **Status possíveis:** `GOLPE CONFIRMADO` · `Aparência Suspeita (Heurística)` · `Erro de Formato` · `Seguro`
 
@@ -60,13 +60,13 @@ Cada URL passa por três camadas, nesta ordem:
 
 A API abre a página em Chromium headless e executa [axe-core](https://github.com/dequelabs/axe-core). O resultado inclui:
 
-| Campo | Significado |
-|---|---|
-| `quality_rating` | Nota de 0 a 100 — **maior = melhor** |
-| `accessibility_score` | Penalidade acumulada — **maior = pior** |
-| `passes_count` | Regras que a página passou (usado no cálculo da nota) |
-| `violations_count` | Quantidade de violações encontradas |
-| `axe_source` | `server` (Puppeteer), `client` (fallback da extensão) ou `skipped` |
+| Campo                 | Significado                                                        |
+| --------------------- | ------------------------------------------------------------------ |
+| `quality_rating`      | Nota de 0 a 100 — **maior = melhor**                               |
+| `accessibility_score` | Penalidade acumulada — **maior = pior**                            |
+| `passes_count`        | Regras que a página passou (usado no cálculo da nota)              |
+| `violations_count`    | Quantidade de violações encontradas                                |
+| `axe_source`          | `server` (Puppeteer), `client` (fallback da extensão) ou `skipped` |
 
 **Modelo de pontuação** (projetado para não punir injustamente sites grandes):
 
@@ -77,6 +77,7 @@ A API abre a página em Chromium headless e executa [axe-core](https://github.co
   `quality_rating = 100 × e^(-penalidade_efetiva / 150)`
 
   onde `penalidade_efetiva` é a penalidade acumulada (ajustada pelo amortecimento de cobertura). Com penalidade zero a nota é 100; conforme as violações aumentam, a nota decai de forma suave — nunca cai abruptamente a zero, mesmo em páginas com muitos problemas.
+
 - Amortecimento por cobertura: páginas que passam na maioria das regras recebem nota mais clemente.
 
 ### Contas e autenticação
@@ -115,13 +116,13 @@ A extensão envia `POST /urls/analyze` a cada navegação. Se o site for perigos
 
 ## Peculiaridades e comportamento esperado
 
-| Comportamento | Descrição |
-|---|---|
+| Comportamento            | Descrição                                                                                                                                                                |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Resiliência ao banco** | Se o PostgreSQL estiver indisponível, a análise de segurança e acessibilidade **continua funcionando** — apenas o histórico não é salvo (`persistence.persisted: false`) |
-| **Cache de segurança** | Resultados de Safe Browsing/heurísticas são reutilizados por 24 h |
-| **`dev_mode`** | Inclui relatório detalhado das violações axe (respostas muito grandes — usar só em desenvolvimento) |
-| **Análise sem login** | `POST /urls/analyze` funciona sem JWT; com token, vincula ao histórico do usuário |
-| **Extensão** | O `content.js` analisa automaticamente cada página; popup/login da extensão ainda em desenvolvimento |
+| **Cache de segurança**   | Resultados de Safe Browsing/heurísticas são reutilizados por 24 h                                                                                                        |
+| **`dev_mode`**           | Inclui relatório detalhado das violações axe (respostas muito grandes — usar só em desenvolvimento)                                                                      |
+| **Análise sem login**    | `POST /urls/analyze` funciona sem JWT; com token, vincula ao histórico do usuário                                                                                        |
+| **Extensão**             | O `content.js` analisa automaticamente cada página; popup/login da extensão ainda em desenvolvimento                                                                     |
 
 ---
 
@@ -129,14 +130,14 @@ A extensão envia `POST /urls/analyze` a cada navegação. Se o site for perigos
 
 ### Pré-requisitos
 
-| Ferramenta | Versão | Necessário para |
-|---|---|---|
-| [Git](https://git-scm.com/) | atual | Clonar o repositório |
-| [Docker](https://www.docker.com/) + Compose v2 | atual | Caminho recomendado (API + banco) |
-| [Node.js](https://nodejs.org/) | 20+ | Execução sem Docker |
-| [PostgreSQL](https://www.postgresql.org/) | 16+ | Execução sem Docker |
-| Chrome ou Chromium | atual | Extensão e auditoria axe sem Docker |
-| Chave [Google Safe Browsing](https://console.cloud.google.com/) | — | Análise de URLs |
+| Ferramenta                                                      | Versão | Necessário para                     |
+| --------------------------------------------------------------- | ------ | ----------------------------------- |
+| [Git](https://git-scm.com/)                                     | atual  | Clonar o repositório                |
+| [Docker](https://www.docker.com/) + Compose v2                  | atual  | Caminho recomendado (API + banco)   |
+| [Node.js](https://nodejs.org/)                                  | 20+    | Execução sem Docker                 |
+| [PostgreSQL](https://www.postgresql.org/)                       | 16+    | Execução sem Docker                 |
+| Chrome ou Chromium                                              | atual  | Extensão e auditoria axe sem Docker |
+| Chave [Google Safe Browsing](https://console.cloud.google.com/) | —      | Análise de URLs                     |
 
 OAuth (GitHub/Google) e frontend são opcionais.
 
@@ -176,19 +177,19 @@ Em segundo plano:
 docker compose up --build -d
 ```
 
-| Recurso | URL |
-|---|---|
-| Health check | http://localhost:3000/api/status |
-| Swagger UI | http://localhost:3000/api/docs |
+| Recurso      | URL                                 |
+| ------------ | ----------------------------------- |
+| Health check | http://localhost:3000/api/status    |
+| Swagger UI   | http://localhost:3000/api/docs      |
 | OpenAPI JSON | http://localhost:3000/api/docs.json |
 
 **Comandos úteis**
 
-| Comando | O que faz |
-|---|---|
-| `docker compose logs -f api` | Logs da API |
-| `docker compose down` | Para os containers |
-| `docker compose down -v` | Para e **apaga o banco** |
+| Comando                      | O que faz                |
+| ---------------------------- | ------------------------ |
+| `docker compose logs -f api` | Logs da API              |
+| `docker compose down`        | Para os containers       |
+| `docker compose down -v`     | Para e **apaga o banco** |
 
 > Após alterar scripts em `db/init/`, recrie o volume: `docker compose down -v && docker compose up --build`
 
@@ -222,10 +223,10 @@ psql -U postgres -d sentinela -f db/init/06-accessibility-score-numeric.sql
 
 Usuários de teste criados pelo seed (`03-oauth.sql`), senha **`123456`**:
 
-| E-mail | Uso |
-|---|---|
-| `admin@test.com` | Admin |
-| `joao@test.com` | Usuário comum |
+| E-mail           | Uso           |
+| ---------------- | ------------- |
+| `admin@test.com` | Admin         |
+| `joao@test.com`  | Usuário comum |
 | `maria@test.com` | Usuário comum |
 
 #### B.2 — API
@@ -313,15 +314,15 @@ cd api && npm run test:urls
 
 Consulte `.env.example` para a lista completa. Principais:
 
-| Variável | Obrigatório | Função |
-|---|---|---|
-| `GOOGLE_API_KEY` | sim | Google Safe Browsing |
-| `JWT_SECRET` | sim | Assinatura dos tokens de sessão |
-| `DB_*` | sim | Conexão PostgreSQL |
-| `GITHUB_*` / `GOOGLE_*` | OAuth | Login social |
-| `AXE_ENABLED` | não | Desativa auditoria Puppeteer (`false`) |
-| `CORS_ALLOWED_ORIGINS` | produção | Domínios autorizados a consumir a API |
-| `VITE_API_URL` | frontend | URL da API na Vercel |
+| Variável                | Obrigatório | Função                                 |
+| ----------------------- | ----------- | -------------------------------------- |
+| `GOOGLE_API_KEY`        | sim         | Google Safe Browsing                   |
+| `JWT_SECRET`            | sim         | Assinatura dos tokens de sessão        |
+| `DB_*`                  | sim         | Conexão PostgreSQL                     |
+| `GITHUB_*` / `GOOGLE_*` | OAuth       | Login social                           |
+| `AXE_ENABLED`           | não         | Desativa auditoria Puppeteer (`false`) |
+| `CORS_ALLOWED_ORIGINS`  | produção    | Domínios autorizados a consumir a API  |
+| `VITE_API_URL`          | frontend    | URL da API na Vercel                   |
 
 > **Produção:** Frontend na Vercel, API no Render, banco no Supabase (porta `6543` com PgBouncer). Docker local usa porta `5432`.
 
@@ -335,49 +336,49 @@ Rotas protegidas exigem `Authorization: Bearer <jwt>`.
 
 ### Sistema
 
-| Método | Rota | Descrição |
-|---|---|---|
-| `GET` | `/` | Índice HATEOAS |
-| `GET` | `/api/status` | Health check |
-| `GET` | `/api/docs` | Swagger UI |
+| Método | Rota          | Descrição      |
+| ------ | ------------- | -------------- |
+| `GET`  | `/`           | Índice HATEOAS |
+| `GET`  | `/api/status` | Health check   |
+| `GET`  | `/api/docs`   | Swagger UI     |
 
 ### Autenticação
 
-| Método | Rota | Descrição |
-|---|---|---|
-| `POST` | `/auth/register` | Cadastro local |
-| `POST` | `/auth/login` | Login local |
-| `GET` | `/auth/oauth/providers` | Provedores OAuth disponíveis |
-| `GET` | `/auth/oauth/{github\|google}` | Inicia login social |
-| `GET` | `/auth/oauth/{provider}/callback` | Callback OAuth → JWT |
+| Método | Rota                              | Descrição                    |
+| ------ | --------------------------------- | ---------------------------- |
+| `POST` | `/auth/register`                  | Cadastro local               |
+| `POST` | `/auth/login`                     | Login local                  |
+| `GET`  | `/auth/oauth/providers`           | Provedores OAuth disponíveis |
+| `GET`  | `/auth/oauth/{github\|google}`    | Inicia login social          |
+| `GET`  | `/auth/oauth/{provider}/callback` | Callback OAuth → JWT         |
 
 ### Verificação e histórico
 
-| Método | Rota | Auth | Descrição |
-|---|---|---|---|
-| `POST` | `/urls/analyze` | opcional | Análise completa (segurança + acessibilidade) |
-| `GET` | `/users/history` | sim | Histórico do usuário |
-| `GET` | `/urls/scores/history?url=` | público | Evolução de notas de uma URL |
-| `POST` | `/reports` | sim | Enviar denúncia |
-| `GET` | `/reports/mine` | sim | Denúncias do usuário |
+| Método | Rota                        | Auth     | Descrição                                     |
+| ------ | --------------------------- | -------- | --------------------------------------------- |
+| `POST` | `/urls/analyze`             | opcional | Análise completa (segurança + acessibilidade) |
+| `GET`  | `/users/history`            | sim      | Histórico do usuário                          |
+| `GET`  | `/urls/scores/history?url=` | público  | Evolução de notas de uma URL                  |
+| `POST` | `/reports`                  | sim      | Enviar denúncia                               |
+| `GET`  | `/reports/mine`             | sim      | Denúncias do usuário                          |
 
 ### Rankings (públicos)
 
-| Método | Rota | Descrição |
-|---|---|---|
-| `GET` | `/rankings/accessibility/worst` | Piores notas médias por host |
-| `GET` | `/rankings/accessibility/best` | Melhores notas médias por host |
-| `GET` | `/rankings/reports/most` | Sites mais denunciados |
+| Método | Rota                            | Descrição                      |
+| ------ | ------------------------------- | ------------------------------ |
+| `GET`  | `/rankings/accessibility/worst` | Piores notas médias por host   |
+| `GET`  | `/rankings/accessibility/best`  | Melhores notas médias por host |
+| `GET`  | `/rankings/reports/most`        | Sites mais denunciados         |
 
 ### Analytics (autenticado)
 
-| Método | Rota | Descrição |
-|---|---|---|
-| `GET` | `/api/analytics/security/global` | Volumetria de ameaças e cache |
-| `GET` | `/api/analytics/security/community` | Denúncias cruzadas com origem da análise |
-| `GET` | `/api/analytics/security/ranking/hosts` | Hosts mais perigosos |
-| `GET` | `/api/analytics/accessibility/global` | Médias globais de acessibilidade |
-| `GET` | `/api/analytics/accessibility/ranking/hosts` | Hosts com pior acessibilidade |
+| Método | Rota                                         | Descrição                                |
+| ------ | -------------------------------------------- | ---------------------------------------- |
+| `GET`  | `/api/analytics/security/global`             | Volumetria de ameaças e cache            |
+| `GET`  | `/api/analytics/security/community`          | Denúncias cruzadas com origem da análise |
+| `GET`  | `/api/analytics/security/ranking/hosts`      | Hosts mais perigosos                     |
+| `GET`  | `/api/analytics/accessibility/global`        | Médias globais de acessibilidade         |
+| `GET`  | `/api/analytics/accessibility/ranking/hosts` | Hosts com pior acessibilidade            |
 
 ---
 
@@ -399,11 +400,11 @@ Este projeto é software livre licenciado sob a **[GNU General Public License v3
 
 ### O que isso significa
 
-| Permissão | Condição |
-|---|---|
-| Usar, estudar e modificar o código | Livremente |
-| Redistribuir cópias | Deve incluir o texto completo da GPL e o código-fonte |
-| Distribuir versões modificadas | Deve permanecer sob GPL e indicar as alterações |
+| Permissão                          | Condição                                              |
+| ---------------------------------- | ----------------------------------------------------- |
+| Usar, estudar e modificar o código | Livremente                                            |
+| Redistribuir cópias                | Deve incluir o texto completo da GPL e o código-fonte |
+| Distribuir versões modificadas     | Deve permanecer sob GPL e indicar as alterações       |
 
 O texto integral da licença está em [`LICENSE`](LICENSE) na raiz do repositório.
 
